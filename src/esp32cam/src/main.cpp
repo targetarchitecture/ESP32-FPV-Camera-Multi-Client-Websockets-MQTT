@@ -5,7 +5,7 @@
 #include <ESPmDNS.h>
 #include "esp_timer.h"
 #include "img_converters.h"
-#include "Arduino.h"
+#include "Arduino.h" 
 #include "fb_gfx.h"
 #include "soc/soc.h"          //disable brownout problems
 #include "soc/rtc_cntl_reg.h" //disable brownout problems
@@ -19,89 +19,27 @@ const char *password = "isaacasimov";
 
 // This project was tested with the AI Thinker Model, M5STACK PSRAM Model and M5STACK WITHOUT PSRAM
 #define CAMERA_MODEL_AI_THINKER
-//#define CAMERA_MODEL_M5STACK_PSRAM
-//#define CAMERA_MODEL_M5STACK_WITHOUT_PSRAM
 
-// Not tested with this model
-//#define CAMERA_MODEL_WROVER_KIT
+#if defined(CAMERA_MODEL_AI_THINKER)
+    #define PWDN_GPIO_NUM 32
+    #define RESET_GPIO_NUM -1
+    #define XCLK_GPIO_NUM 0
+    #define SIOD_GPIO_NUM 26
+    #define SIOC_GPIO_NUM 27
 
-#if defined(CAMERA_MODEL_WROVER_KIT)
-#define PWDN_GPIO_NUM -1
-#define RESET_GPIO_NUM -1
-#define XCLK_GPIO_NUM 21
-#define SIOD_GPIO_NUM 26
-#define SIOC_GPIO_NUM 27
-
-#define Y9_GPIO_NUM 35
-#define Y8_GPIO_NUM 34
-#define Y7_GPIO_NUM 39
-#define Y6_GPIO_NUM 36
-#define Y5_GPIO_NUM 19
-#define Y4_GPIO_NUM 18
-#define Y3_GPIO_NUM 5
-#define Y2_GPIO_NUM 4
-#define VSYNC_GPIO_NUM 25
-#define HREF_GPIO_NUM 23
-#define PCLK_GPIO_NUM 22
-
-#elif defined(CAMERA_MODEL_M5STACK_PSRAM)
-#define PWDN_GPIO_NUM -1
-#define RESET_GPIO_NUM 15
-#define XCLK_GPIO_NUM 27
-#define SIOD_GPIO_NUM 25
-#define SIOC_GPIO_NUM 23
-
-#define Y9_GPIO_NUM 19
-#define Y8_GPIO_NUM 36
-#define Y7_GPIO_NUM 18
-#define Y6_GPIO_NUM 39
-#define Y5_GPIO_NUM 5
-#define Y4_GPIO_NUM 34
-#define Y3_GPIO_NUM 35
-#define Y2_GPIO_NUM 32
-#define VSYNC_GPIO_NUM 22
-#define HREF_GPIO_NUM 26
-#define PCLK_GPIO_NUM 21
-
-#elif defined(CAMERA_MODEL_M5STACK_WITHOUT_PSRAM)
-#define PWDN_GPIO_NUM -1
-#define RESET_GPIO_NUM 15
-#define XCLK_GPIO_NUM 27
-#define SIOD_GPIO_NUM 25
-#define SIOC_GPIO_NUM 23
-
-#define Y9_GPIO_NUM 19
-#define Y8_GPIO_NUM 36
-#define Y7_GPIO_NUM 18
-#define Y6_GPIO_NUM 39
-#define Y5_GPIO_NUM 5
-#define Y4_GPIO_NUM 34
-#define Y3_GPIO_NUM 35
-#define Y2_GPIO_NUM 17
-#define VSYNC_GPIO_NUM 22
-#define HREF_GPIO_NUM 26
-#define PCLK_GPIO_NUM 21
-
-#elif defined(CAMERA_MODEL_AI_THINKER)
-#define PWDN_GPIO_NUM 32
-#define RESET_GPIO_NUM -1
-#define XCLK_GPIO_NUM 0
-#define SIOD_GPIO_NUM 26
-#define SIOC_GPIO_NUM 27
-
-#define Y9_GPIO_NUM 35
-#define Y8_GPIO_NUM 34
-#define Y7_GPIO_NUM 39
-#define Y6_GPIO_NUM 36
-#define Y5_GPIO_NUM 21
-#define Y4_GPIO_NUM 19
-#define Y3_GPIO_NUM 18
-#define Y2_GPIO_NUM 5
-#define VSYNC_GPIO_NUM 25
-#define HREF_GPIO_NUM 23
-#define PCLK_GPIO_NUM 22
+    #define Y9_GPIO_NUM 35
+    #define Y8_GPIO_NUM 34
+    #define Y7_GPIO_NUM 39
+    #define Y6_GPIO_NUM 36
+    #define Y5_GPIO_NUM 21
+    #define Y4_GPIO_NUM 19
+    #define Y3_GPIO_NUM 18
+    #define Y2_GPIO_NUM 5
+    #define VSYNC_GPIO_NUM 25
+    #define HREF_GPIO_NUM 23
+    #define PCLK_GPIO_NUM 22
 #else
-#error "Camera model not selected"
+    #error "Camera model not selected"
 #endif
 
 static const char *_STREAM_CONTENT_TYPE = "multipart/x-mixed-replace;boundary=" PART_BOUNDARY;
@@ -112,15 +50,16 @@ httpd_handle_t stream_httpd = NULL;
 
 camera_config_t config;
 
-String pixel_format = "JPEG";
-String frame_size = "UXGA";
-int jpeg_quality = 10;
+//String pixel_format = "JPEG";
+String frame_size = "QVGA";
+int jpeg_quality = 12;
 int fb_count = 2;
 bool runSetConfig = false;
+pixformat_t pixel_format = PIXFORMAT_JPEG;
 
 static void setConfig()
 {
-runSetConfig=true;
+    runSetConfig=true;
 
     Serial.printf("setConfig \n");
 
@@ -144,27 +83,29 @@ runSetConfig=true;
     config.pin_reset = RESET_GPIO_NUM;
     config.xclk_freq_hz = 20000000;
 
+    config.pixel_format = pixel_format;
+
     /*!< Format of the pixel data: PIXFORMAT_ + YUV422|GRAYSCALE|RGB565|JPEG  */
-    if (pixel_format == "JPEG")
-    {
-        config.pixel_format = PIXFORMAT_JPEG;
-    }
-    else if (pixel_format == "RGB565")
-    {
-        config.pixel_format = PIXFORMAT_RGB565;
-    }
-    else if (pixel_format == "GRAYSCALE")
-    {
-        config.pixel_format = PIXFORMAT_GRAYSCALE;
-    }
-    else if (pixel_format == "YUV422")
-    {
-        config.pixel_format = PIXFORMAT_YUV422;
-    }
-    else
-    {
-        config.pixel_format = PIXFORMAT_JPEG;
-    }
+    // if (pixel_format == "JPEG")
+    // {
+    //     config.pixel_format = PIXFORMAT_JPEG;
+    // }
+    // else if (pixel_format == "RGB565")
+    // {
+    //     config.pixel_format = PIXFORMAT_RGB565;
+    // }
+    // else if (pixel_format == "GRAYSCALE")
+    // {
+    //     config.pixel_format = PIXFORMAT_GRAYSCALE;
+    // }
+    // else if (pixel_format == "YUV422")
+    // {
+    //     config.pixel_format = PIXFORMAT_YUV422;
+    // }
+    // else
+    // {
+    //     config.pixel_format = PIXFORMAT_JPEG;
+    // }
 
     /*!< Size of the output image: FRAMESIZE_ + QVGA|CIF|VGA|SVGA|XGA|SXGA|UXGA  */
     if (frame_size == "UXGA")
