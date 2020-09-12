@@ -3,6 +3,7 @@
 .vscode/c_cpp_properties.json
 .vscode/launch.json
 .vscode/ipch
-wifikeys.h
 .pioenvs
 .piolibdeps
+
+include/credentials.h
