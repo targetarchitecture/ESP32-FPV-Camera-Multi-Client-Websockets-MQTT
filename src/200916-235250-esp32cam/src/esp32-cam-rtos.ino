@@ -24,7 +24,6 @@
 #define APP_CPU 1
 #define PRO_CPU 0
 
-#include <Arduino.h>
 #include "esp_camera.h"
 #include "ov2640.h"
 #include <WiFi.h>
@@ -43,7 +42,7 @@
 //#define CAMERA_MODEL_M5STACK_WIDE
 #define CAMERA_MODEL_AI_THINKER
 
-#define MAX_CLIENTS 3
+#define MAX_CLIENTS   3
 
 #include "camera_pins.h"
 
@@ -60,19 +59,19 @@
   Should work then
 */
 // #include "home_wifi_multi.h"
-#define SSID1 "the robot network"
-#define PWD1 "isaacasimov"
-
+  #define SSID1 "the robot network"
+  #define PWD1 "isaacasimov"
+  
 //OV2640 cam;
 
 WebServer server(80);
 
 // ===== rtos task handles =========================
 // Streaming is implemented with 3 tasks:
-TaskHandle_t tMjpeg; // handles client connections to the webserver
-TaskHandle_t tCam;   // handles getting picture frames from the camera and storing them locally
+TaskHandle_t tMjpeg;   // handles client connections to the webserver
+TaskHandle_t tCam;     // handles getting picture frames from the camera and storing them locally
 
-uint8_t noActiveClients; // number of active clients
+uint8_t       noActiveClients;       // number of active clients
 
 // frameSync semaphore is used to prevent streaming buffer as it is replaced with the next frame
 SemaphoreHandle_t frameSync = NULL;
@@ -83,36 +82,27 @@ const int FPS = 24;
 // We will handle web client requests every 100 ms (10 Hz)
 const int WSINTERVAL = 100;
 
-//declare functions
-void mjpegCB(void *pvParameters);
-void camCB(void *pvParameters);
-void streamCB(void *pvParameters);
-char *allocateMemory(char *aPtr, size_t aSize);
-void handleNotFound();
-void handleJPGSstream(void);
-void handleJPG(void);
 
 // ======== Server Connection Handler Task ==========================
-void mjpegCB(void *pvParameters)
-{
+void mjpegCB(void* pvParameters) {
   TickType_t xLastWakeTime;
   const TickType_t xFrequency = pdMS_TO_TICKS(WSINTERVAL);
 
   // Creating frame synchronization semaphore and initializing it
   frameSync = xSemaphoreCreateBinary();
-  xSemaphoreGive(frameSync);
+  xSemaphoreGive( frameSync );
 
   //=== setup section  ==================
 
   //  Creating RTOS task for grabbing frames from the camera
   xTaskCreatePinnedToCore(
-      camCB,    // callback
-      "cam",    // name
-      4 * 1024, // stacj size
-      NULL,     // parameters
-      2,        // priority
-      &tCam,    // RTOS task handle
-      PRO_CPU); // core
+    camCB,        // callback
+    "cam",        // name
+    4 * 1024,       // stacj size
+    NULL,         // parameters
+    2,            // priority
+    &tCam,        // RTOS task handle
+    PRO_CPU);     // core
 
   //  Registering webserver handling routines
   server.on("/mjpeg/1", HTTP_GET, handleJPGSstream);
@@ -127,8 +117,7 @@ void mjpegCB(void *pvParameters)
   Serial.printf("\nmjpegCB: free heap (start)  : %d\n", ESP.getFreeHeap());
   //=== loop() section  ===================
   xLastWakeTime = xTaskGetTickCount();
-  for (;;)
-  {
+  for (;;) {
     server.handleClient();
 
     //  After every server client handling request, we let other tasks run and then pause
@@ -137,14 +126,15 @@ void mjpegCB(void *pvParameters)
   }
 }
 
+
 // Current frame information
 volatile uint32_t frameNumber;
-volatile size_t camSize; // size of the current frame, byte
-volatile char *camBuf;   // pointer to the current frame
+volatile size_t   camSize;    // size of the current frame, byte
+volatile char*    camBuf;      // pointer to the current frame
+
 
 // ==== RTOS task to grab frames from the camera =========================
-void camCB(void *pvParameters)
-{
+void camCB(void* pvParameters) {
 
   TickType_t xLastWakeTime;
 
@@ -152,32 +142,30 @@ void camCB(void *pvParameters)
   const TickType_t xFrequency = pdMS_TO_TICKS(1000 / FPS);
 
   //  Pointers to the 2 frames, their respective sizes and index of the current frame
-  char *fbs[2] = {NULL, NULL};
-  size_t fSize[2] = {0, 0};
+  char* fbs[2] = { NULL, NULL };
+  size_t fSize[2] = { 0, 0 };
   int ifb = 0;
   frameNumber = 0;
 
   //=== loop() section  ===================
   xLastWakeTime = xTaskGetTickCount();
 
-  for (;;)
-  {
+  for (;;) {
 
     //  Grab a frame from the camera and query its size
-    camera_fb_t *fb = NULL;
+    camera_fb_t* fb = NULL;
 
     fb = esp_camera_fb_get();
     size_t s = fb->len;
 
     //  If frame size is more that we have previously allocated - request  125% of the current frame space
-    if (s > fSize[ifb])
-    {
+    if (s > fSize[ifb]) {
       fSize[ifb] = s + s;
       fbs[ifb] = allocateMemory(fbs[ifb], fSize[ifb]);
     }
 
     //  Copy current frame into local buffer
-    char *b = (char *)fb->buf;
+    char* b = (char *)fb->buf;
     memcpy(fbs[ifb], b, s);
     esp_camera_fb_return(fb);
 
@@ -190,14 +178,14 @@ void camCB(void *pvParameters)
     //    xSemaphoreTake( frameSync, portMAX_DELAY );
 
     //  Do not allow frame copying while switching the current frame
-    xSemaphoreTake(frameSync, xFrequency);
+    xSemaphoreTake( frameSync, xFrequency );
     camBuf = fbs[ifb];
     camSize = s;
     ifb++;
-    ifb &= 1; // this should produce 1, 0, 1, 0, 1 ... sequence
+    ifb &= 1;  // this should produce 1, 0, 1, 0, 1 ... sequence
     frameNumber++;
     //  Let anyone waiting for a frame know that the frame is ready
-    xSemaphoreGive(frameSync);
+    xSemaphoreGive( frameSync );
 
     //  Immediately let other (streaming) tasks run
     taskYIELD();
@@ -205,32 +193,29 @@ void camCB(void *pvParameters)
     //  If streaming task has suspended itself (no active clients to stream to)
     //  there is no need to grab frames from the camera. We can save some juice
     //  by suspedning the tasks
-    if (noActiveClients == 0)
-    {
+    if ( noActiveClients == 0 ) {
       Serial.printf("mjpegCB: free heap           : %d\n", ESP.getFreeHeap());
       Serial.printf("mjpegCB: min free heap)      : %d\n", ESP.getMinFreeHeap());
       Serial.printf("mjpegCB: max alloc free heap : %d\n", ESP.getMaxAllocHeap());
       Serial.printf("mjpegCB: tCam stack wtrmark  : %d\n", uxTaskGetStackHighWaterMark(tCam));
       Serial.flush();
-      vTaskSuspend(NULL); // passing NULL means "suspend yourself"
+      vTaskSuspend(NULL);  // passing NULL means "suspend yourself"
     }
   }
 }
 
+
 // ==== Memory allocator that takes advantage of PSRAM if present =======================
-char *allocateMemory(char *aPtr, size_t aSize)
-{
+char* allocateMemory(char* aPtr, size_t aSize) {
 
   //  Since current buffer is too smal, free it
-  if (aPtr != NULL)
-    free(aPtr);
+  if (aPtr != NULL) free(aPtr);
 
-  char *ptr = NULL;
-  ptr = (char *)ps_malloc(aSize);
+  char* ptr = NULL;
+  ptr = (char*) ps_malloc(aSize);
 
   // If the memory pointer is NULL, we were not able to allocate any memory, and that is a terminal condition.
-  if (ptr == NULL)
-  {
+  if (ptr == NULL) {
     Serial.println("Out of memory!");
     delay(5000);
     ESP.restart();
@@ -238,9 +223,10 @@ char *allocateMemory(char *aPtr, size_t aSize)
   return ptr;
 }
 
+
 // ==== STREAMING ======================================================
-const char HEADER[] = "HTTP/1.1 200 OK\r\n"
-                      "Access-Control-Allow-Origin: *\r\n"
+const char HEADER[] = "HTTP/1.1 200 OK\r\n" \
+                      "Access-Control-Allow-Origin: *\r\n" \
                       "Content-Type: multipart/x-mixed-replace; boundary=123456789000000000000987654321\r\n";
 const char BOUNDARY[] = "\r\n--123456789000000000000987654321\r\n";
 const char CTNTTYPE[] = "Content-Type: image/jpeg\r\nContent-Length: ";
@@ -248,23 +234,22 @@ const int hdrLen = strlen(HEADER);
 const int bdrLen = strlen(BOUNDARY);
 const int cntLen = strlen(CTNTTYPE);
 
-struct streamInfo
-{
-  uint32_t frame;
-  WiFiClient client;
-  TaskHandle_t task;
-  char *buffer;
-  size_t len;
+
+struct streamInfo {
+  uint32_t        frame;
+  WiFiClient      client;
+  TaskHandle_t    task;
+  char*           buffer;
+  size_t          len;
 };
 
 // ==== Handle connection request from clients ===============================
 void handleJPGSstream(void)
 {
-  if (noActiveClients >= MAX_CLIENTS)
-    return;
+  if ( noActiveClients >= MAX_CLIENTS ) return;
   Serial.printf("handleJPGSstream start: free heap  : %d\n", ESP.getFreeHeap());
 
-  streamInfo *info = new streamInfo;
+  streamInfo* info = new streamInfo;
 
   info->frame = frameNumber - 1;
   info->client = server.client();
@@ -273,15 +258,14 @@ void handleJPGSstream(void)
 
   //  Creating task to push the stream to all connected clients
   int rc = xTaskCreatePinnedToCore(
-      streamCB,
-      "strmCB",
-      3 * 1024,
-      (void *)info,
-      2,
-      &info->task,
-      APP_CPU);
-  if (rc != pdPASS)
-  {
+             streamCB,
+             "strmCB",
+             3 * 1024,
+             (void*) info,
+             2,
+             &info->task,
+             APP_CPU);
+  if ( rc != pdPASS ) {
     Serial.printf("handleJPGSstream: error creating RTOS task. rc = %d\n", rc);
     Serial.printf("handleJPGSstream: free heap  : %d\n", ESP.getFreeHeap());
     //    Serial.printf("stk high wm: %d\n", uxTaskGetStackHighWaterMark(tSend));
@@ -291,21 +275,19 @@ void handleJPGSstream(void)
   noActiveClients++;
 
   // Wake up streaming tasks, if they were previously suspended:
-  if (eTaskGetState(tCam) == eSuspended)
-    vTaskResume(tCam);
+  if ( eTaskGetState( tCam ) == eSuspended ) vTaskResume( tCam );
 }
 
+
 // ==== Actually stream content to all connected clients ========================
-void streamCB(void *pvParameters)
-{
+void streamCB(void * pvParameters) {
   char buf[16];
   TickType_t xLastWakeTime;
   TickType_t xFrequency;
 
-  streamInfo *info = (streamInfo *)pvParameters;
+  streamInfo* info = (streamInfo*) pvParameters;
 
-  if (info == NULL)
-  {
+  if ( info == NULL ) {
     Serial.println("streamCB: a NULL pointer passed");
   }
   //  Immediately send this client a header
@@ -316,52 +298,44 @@ void streamCB(void *pvParameters)
   xLastWakeTime = xTaskGetTickCount();
   xFrequency = pdMS_TO_TICKS(1000 / FPS);
 
-  for (;;)
-  {
+  for (;;) {
     //  Only bother to send anything if there is someone watching
-    if (info->client.connected())
-    {
+    if ( info->client.connected() ) {
 
-      if (info->frame != frameNumber)
-      {
-        xSemaphoreTake(frameSync, portMAX_DELAY);
-        if (info->buffer == NULL)
-        {
-          info->buffer = allocateMemory(info->buffer, camSize);
+      if ( info->frame != frameNumber) {
+        xSemaphoreTake( frameSync, portMAX_DELAY );
+        if ( info->buffer == NULL ) {
+          info->buffer = allocateMemory (info->buffer, camSize);
           info->len = camSize;
         }
-        else
-        {
-          if (camSize > info->len)
-          {
-            info->buffer = allocateMemory(info->buffer, camSize);
+        else {
+          if ( camSize > info->len ) {
+            info->buffer = allocateMemory (info->buffer, camSize);
             info->len = camSize;
           }
         }
-        memcpy(info->buffer, (const void *)camBuf, info->len);
-        xSemaphoreGive(frameSync);
+        memcpy(info->buffer, (const void*) camBuf, info->len);
+        xSemaphoreGive( frameSync );
         taskYIELD();
 
         info->frame = frameNumber;
         info->client.write(CTNTTYPE, cntLen);
         sprintf(buf, "%d\r\n\r\n", info->len);
         info->client.write(buf, strlen(buf));
-        info->client.write((char *)info->buffer, (size_t)info->len);
+        info->client.write((char*) info->buffer, (size_t)info->len);
         info->client.write(BOUNDARY, bdrLen);
         info->client.flush();
       }
     }
-    else
-    {
+    else {
       //  client disconnected - clean up.
       noActiveClients--;
       Serial.printf("streamCB: Stream Task stack wtrmark  : %d\n", uxTaskGetStackHighWaterMark(info->task));
       Serial.flush();
       info->client.flush();
       info->client.stop();
-      if (info->buffer)
-      {
-        free(info->buffer);
+      if ( info->buffer ) {
+        free( info->buffer );
         info->buffer = NULL;
       }
       delete info;
@@ -374,8 +348,10 @@ void streamCB(void *pvParameters)
   }
 }
 
-const char JHEADER[] = "HTTP/1.1 200 OK\r\n"
-                       "Content-disposition: inline; filename=capture.jpg\r\n"
+
+
+const char JHEADER[] = "HTTP/1.1 200 OK\r\n" \
+                       "Content-disposition: inline; filename=capture.jpg\r\n" \
                        "Content-type: image/jpeg\r\n\r\n";
 const int jhdLen = strlen(JHEADER);
 
@@ -384,13 +360,13 @@ void handleJPG(void)
 {
   WiFiClient client = server.client();
 
-  if (!client.connected())
-    return;
-  camera_fb_t *fb = esp_camera_fb_get();
+  if (!client.connected()) return;
+  camera_fb_t* fb = esp_camera_fb_get();
   client.write(JHEADER, jhdLen);
-  client.write((char *)fb->buf, fb->len);
+  client.write((char*)fb->buf, fb->len);
   esp_camera_fb_return(fb);
 }
+
 
 // ==== Handle invalid URL requests ============================================
 void handleNotFound()
@@ -405,6 +381,8 @@ void handleNotFound()
   message += "\n";
   server.send(200, "text / plain", message);
 }
+
+
 
 // ==== SETUP method ==================================================================
 void setup()
@@ -447,28 +425,28 @@ void setup()
   //  config.fb_count = 2;
 
   static camera_config_t camera_config = {
-      .pin_pwdn = PWDN_GPIO_NUM,
-      .pin_reset = RESET_GPIO_NUM,
-      .pin_xclk = XCLK_GPIO_NUM,
-      .pin_sscb_sda = SIOD_GPIO_NUM,
-      .pin_sscb_scl = SIOC_GPIO_NUM,
-      .pin_d7 = Y9_GPIO_NUM,
-      .pin_d6 = Y8_GPIO_NUM,
-      .pin_d5 = Y7_GPIO_NUM,
-      .pin_d4 = Y6_GPIO_NUM,
-      .pin_d3 = Y5_GPIO_NUM,
-      .pin_d2 = Y4_GPIO_NUM,
-      .pin_d1 = Y3_GPIO_NUM,
-      .pin_d0 = Y2_GPIO_NUM,
-      .pin_vsync = VSYNC_GPIO_NUM,
-      .pin_href = HREF_GPIO_NUM,
-      .pin_pclk = PCLK_GPIO_NUM,
+    .pin_pwdn       = PWDN_GPIO_NUM,
+    .pin_reset      = RESET_GPIO_NUM,
+    .pin_xclk       = XCLK_GPIO_NUM,
+    .pin_sscb_sda   = SIOD_GPIO_NUM,
+    .pin_sscb_scl   = SIOC_GPIO_NUM,
+    .pin_d7         = Y9_GPIO_NUM,
+    .pin_d6         = Y8_GPIO_NUM,
+    .pin_d5         = Y7_GPIO_NUM,
+    .pin_d4         = Y6_GPIO_NUM,
+    .pin_d3         = Y5_GPIO_NUM,
+    .pin_d2         = Y4_GPIO_NUM,
+    .pin_d1         = Y3_GPIO_NUM,
+    .pin_d0         = Y2_GPIO_NUM,
+    .pin_vsync      = VSYNC_GPIO_NUM,
+    .pin_href       = HREF_GPIO_NUM,
+    .pin_pclk       = PCLK_GPIO_NUM,
 
-      .xclk_freq_hz = 20000000,
-      .ledc_timer = LEDC_TIMER_0,
-      .ledc_channel = LEDC_CHANNEL_0,
-      .pixel_format = PIXFORMAT_JPEG,
-      /*
+    .xclk_freq_hz   = 20000000,
+    .ledc_timer     = LEDC_TIMER_0,
+    .ledc_channel   = LEDC_CHANNEL_0,
+    .pixel_format   = PIXFORMAT_JPEG,
+    /*
         FRAMESIZE_96X96,    // 96x96
         FRAMESIZE_QQVGA,    // 160x120
         FRAMESIZE_QCIF,     // 176x144
@@ -484,25 +462,28 @@ void setup()
         FRAMESIZE_SXGA,     // 1280x1024
         FRAMESIZE_UXGA,     // 1600x1200
     */
-      .frame_size = FRAMESIZE_QVGA,
-      //    .frame_size     = FRAMESIZE_UXGA,
-      //    .frame_size     = FRAMESIZE_SVGA,
-      //    .frame_size     = FRAMESIZE_VGA,
-      //.frame_size     = FRAMESIZE_UXGA,
-      .jpeg_quality = 16,
-      .fb_count = 2};
+        .frame_size     = FRAMESIZE_QVGA,
+    //    .frame_size     = FRAMESIZE_UXGA,
+    //    .frame_size     = FRAMESIZE_SVGA,
+    //    .frame_size     = FRAMESIZE_VGA,
+    //.frame_size     = FRAMESIZE_UXGA,
+    .jpeg_quality   = 16,
+    .fb_count       = 2
+  };
 
 #if defined(CAMERA_MODEL_ESP_EYE)
   pinMode(13, INPUT_PULLUP);
   pinMode(14, INPUT_PULLUP);
 #endif
 
-  if (esp_camera_init(&camera_config) != ESP_OK)
-  {
+  if (esp_camera_init(&camera_config) != ESP_OK) {
     Serial.println("Error initializing the camera");
     delay(10000);
     ESP.restart();
   }
+
+
+
 
   //  Configure and connect to WiFi
   IPAddress ip;
@@ -522,21 +503,21 @@ void setup()
   Serial.print(ip);
   Serial.println("/mjpeg/1");
 
+
   // Start mainstreaming RTOS task
   xTaskCreatePinnedToCore(
-      mjpegCB,
-      "mjpeg",
-      2 * 1024,
-      NULL,
-      2,
-      &tMjpeg,
-      APP_CPU);
+    mjpegCB,
+    "mjpeg",
+    2*1024,
+    NULL,
+    2,
+    &tMjpeg,
+    APP_CPU);
 
   Serial.printf("setup complete: free heap  : %d\n", ESP.getFreeHeap());
 }
 
-void loop()
-{
+void loop() {
   // this seems to be necessary to let IDLE task run and do GC
   vTaskDelay(1000);
 }
