@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <title>VR headset</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+    <style>
+        /* Three image containers (use 25% for four, and 50% for two, etc) */
+        .column {
+            float: left;
+            width: 45%;
+            padding: 5px;
+        }
+
+        /* Clear floats after image containers */
+        .row::after {
+            content: "";
+            clear: both;
+            display: table;
+        }
+
+        body {
+            background-color: black;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="row">
+        <div class="column"><img id="STREAML" alt="Left" style="width:100%"></div>
+        <div class="column"><img id="STREAMR" alt="Right" style="width:100%"></div>
+    </div>
+
+    <script>
+
+        var init = false;
+
+        $(document).ready(function () {
+            if (!('WebSocket' in window)) {
+                alert('Your browser does not support websockets');
+            } else {
+                configWebSocket();
+            }
+        });
+
+        function configWebSocket() {
+            var server = 'ws://192.168.1.100:80';
+            var socket = new WebSocket(server);
+            socket.binaryType = 'arraybuffer';
+            if (socket) {
+                socket.onopen = function () {
+                } 
+                socket.onmessage = async function (msg) {
+                    var bytes = new Uint8Array(msg.data);
+                    var binary = '';
+                    var len = bytes.byteLength;
+                    for (var i = 0; i < len; i++) {
+                        binary += String.fromCharCode(bytes[i])
+                    }
+                    var imgL = document.getElementById('STREAML');
+                    imgL.src = 'data:image/jpg;base64,' + window.btoa(binary);
+
+                    var imgR = document.getElementById('STREAMR');
+                    imgR.src = 'data:image/jpg;base64,' + window.btoa(binary);
+                }
+                socket.onclose = function () {
+                    showServerResponse('The connection has been closed.');
+                }
+            }
+        }
+    </script>
+</body>
+
+</html>
