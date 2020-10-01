@@ -22,7 +22,7 @@
 #include "fd_forward.h"
 #include "fr_forward.h"
 
-extern camera_fb_t *fb2;
+//extern camera_fb_t *fb2;
 
 #define ENROLL_CONFIRM_TIMES 5
 #define FACE_ID_SAVE_NUMBER 7
@@ -334,7 +334,7 @@ static esp_err_t stream_handler(httpd_req_t *req){
     while(true){
         detected = false;
         face_id = 0;
-        fb = fb2; // esp_camera_fb_get();
+        fb =  esp_camera_fb_get();
         if (!fb) {
             Serial.println("Camera capture failed");
             res = ESP_FAIL;
@@ -417,7 +417,7 @@ static esp_err_t stream_handler(httpd_req_t *req){
             res = httpd_resp_send_chunk(req, (const char *)_jpg_buf, _jpg_buf_len);
         }
         if(fb){
-            //esp_camera_fb_return(fb);
+            esp_camera_fb_return(fb);
             fb = NULL;
             _jpg_buf = NULL;
         } else if(_jpg_buf){
@@ -624,6 +624,13 @@ void startCameraServer(){
 
    httpd_uri_t stream_uri = {
         .uri       = "/stream",
+        .method    = HTTP_GET,
+        .handler   = stream_handler,
+        .user_ctx  = NULL
+    };
+
+       httpd_uri_t stream_uri2 = {
+        .uri       = "/stream2",
         .method    = HTTP_GET,
         .handler   = stream_handler,
         .user_ctx  = NULL

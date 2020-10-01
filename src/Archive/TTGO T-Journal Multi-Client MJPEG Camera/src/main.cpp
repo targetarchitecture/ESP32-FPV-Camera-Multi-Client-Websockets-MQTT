@@ -37,8 +37,8 @@ const char *password = "isaacasimov";
 #define I2C_SDA 14
 #define I2C_SCL 13
 
-camera_fb_t *fb2;
-size_t fb_len;
+// camera_fb_t *fb2;
+// size_t fb_len;
 
 Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, -1);
 
@@ -174,8 +174,8 @@ void loop()
   // put your main code here, to run repeatedly:
   delay(10);
 
-  fb2 = esp_camera_fb_get();
+//  fb2 = esp_camera_fb_get();
 
   //return the frame buffer back to be reused
-  esp_camera_fb_return(fb2);
+ // esp_camera_fb_return(fb2);
 }
