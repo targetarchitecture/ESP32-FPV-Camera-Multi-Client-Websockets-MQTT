@@ -28,7 +28,7 @@
 bool clientConnected[3] = {false, false, false};
 
 //define port numbers
-uint8_t webSocketPort = 81;
+auto webSocketPort = 81;
 auto webServerPort = 80;
 
 //object declaration
@@ -37,6 +37,10 @@ WebServer server(webServerPort);
 WiFiClient client;
 PubSubClient MQTTClient;
 Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, -1);
+
+//embedded files
+extern const uint8_t vrHTML_start[] asm("_binary_www_vr_html_start");
+extern const uint8_t vrHTML_end[] asm("_binary_www_vr_html_end");
 
 //function declaration
 void webSocketEvent(uint8_t num, WStype_t type, uint8_t *payload, size_t length);
@@ -223,17 +227,21 @@ void loop(void)
   //   Serial.println(max_fb_len);
   // }
 
+  uint32_t webSockets = 0;
+
   for (int camNo = 0; camNo < 3; camNo++)
   {
     if (clientConnected[camNo] == true)
     {
+      webSockets++;
+
       webSocket.sendBIN(camNo, fb->buf, fb_len);
     }
   }
 
   if (MQTTClient.connected())
   {
-    MQTTClient.publish("frames", fb->buf, fb_len);
+    MQTTClient.publish(MQTT_TOPIC, fb->buf, fb_len);
   }
   else
   {
@@ -253,9 +261,11 @@ void loop(void)
   display.clearDisplay();
   display.setTextSize(1);
   display.setTextColor(WHITE);
-  display.setCursor(0, 5);
-  display.printf("JPG: %uB \n", (uint32_t)(fb_len));
-  display.printf("%ums\n", (uint32_t)((fr_end - fr_start) / 1000));
+  display.setCursor(0,0); // 5);
+  display.printf("JPEG: %u Kb\n", (uint32_t)(fb_len) / 1024);
+  display.printf("TIME: %u ms\n", (uint32_t)((fr_end - fr_start) / 1000));
+  display.printf("CLIENTS: %u\n", webSockets);
+  display.printf("WIFI: %u", WiFi.RSSI());
   display.display();
 }
 
