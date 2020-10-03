@@ -24,6 +24,11 @@
 #define I2C_SDA 14
 #define I2C_SCL 13
 
+//averaging calculation
+#define framesToAvg 100
+int frameTimings[framesToAvg];
+int frameIndex = 0;
+
 //holds the webSocket client tracker (TODO: improve design so more than 3 websockets can be used)
 bool clientConnected[3] = {false, false, false};
 
@@ -47,6 +52,7 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t *payload, size_t length)
 int initCamera();
 void handleRoot();
 void handle404();
+int calculateAVGFPS(int frameTime);
 
 void setup(void)
 {
@@ -107,14 +113,8 @@ void setup(void)
   webSocket.begin();
   webSocket.onEvent(webSocketEvent);
 
-  // Serial.print("MQTT Buffer size:");
-  // Serial.println(MQTTClient.getBufferSize());
-
   //set this to be a large enough value to allow an MQTT message containing a 22Kb JPEG to be sent
   MQTTClient.setBufferSize(30000);
-
-  // Serial.print("New MQTT Buffer size:");
-  // Serial.println(MQTTClient.getBufferSize());
 
   Serial.println("Connecting to MQTT server");
   MQTTClient.setClient(client);
@@ -257,16 +257,38 @@ void loop(void)
   esp_camera_fb_return(fb);
 
   int64_t fr_end = esp_timer_get_time();
+  uint32_t timeToCompleteLoopMs = ((fr_end - fr_start) / 1000);
 
   display.clearDisplay();
   display.setTextSize(1);
   display.setTextColor(WHITE);
-  display.setCursor(0,0); // 5);
+  display.setCursor(0, 0);
   display.printf("JPEG: %u Kb\n", (uint32_t)(fb_len) / 1024);
-  display.printf("TIME: %u ms\n", (uint32_t)((fr_end - fr_start) / 1000));
+  display.printf("TIME: %u ms\n", timeToCompleteLoopMs);
   display.printf("CLIENTS: %u\n", webSockets);
-  //display.printf("WIFI: %u", WiFi.RSSI();
+  display.printf("FPS: %u\n", calculateAVGFPS(timeToCompleteLoopMs));
   display.display();
+}
+
+int calculateAVGFPS(int frameTime)
+{
+  if (frameIndex == framesToAvg)
+  {
+    frameIndex = 0;
+  }
+
+  frameTimings[frameIndex] = frameTime;
+
+  frameIndex++;
+
+  //loop through and get average
+  int sum = 0;
+  for (int i = 0; i < framesToAvg; i++)
+  {
+    sum += frameTimings[i];
+  }
+
+  return (int)sum / framesToAvg;
 }
 
 void handleRoot()
