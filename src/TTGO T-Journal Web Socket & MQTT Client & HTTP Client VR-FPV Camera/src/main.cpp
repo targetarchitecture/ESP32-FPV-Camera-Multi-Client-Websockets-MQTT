@@ -265,7 +265,7 @@ void loop(void)
   display.printf("JPEG: %u Kb\n", (uint32_t)(fb_len) / 1024);
   display.printf("TIME: %u ms\n", (uint32_t)((fr_end - fr_start) / 1000));
   display.printf("CLIENTS: %u\n", webSockets);
-  display.printf("WIFI: %u", WiFi.RSSI());
+  //display.printf("WIFI: %u", WiFi.RSSI();
   display.display();
 }
 
