@@ -20,7 +20,7 @@ I bought an ESP32Cam in mid 2019 and tried the pre-installed demo. I wasn’t im
 
 Fast forward to October 2020, with time on my hands due to the pandemic curtailing a lot of social activities I started to think about the FPV problem again. 
 
-I had watched a few FPV drone videos and purchased a small FPV camera from a UK company (https://www.flyingtech.co.uk/). This helped me make sure it was a legal transmitter as 25mW. The camera works at 5.8Ghz and has 1200TVL (TV lines) which claims to have effective image size 1280Hx1024V. This is about as good as it gets for analog cameras. Paired with a USB OTG UVC (Universal Video Class) 5.8Ghz receiver allowed the image to be displayed on a mobile phone or Windows 10. 
+I had watched a few FPV drone videos and purchased a small FPV camera from a UK company (https://www.flyingtech.co.uk/), this helped me make sure it was a legal transmitter at 25mW. The camera works at 5.8Ghz and has 1200TVL (TV lines) which claims to have effective image size 1280Hx1024V. This is about as good as it gets for analog cameras. Paired with a USB OTG UVC (Universal Video Class) 5.8Ghz receiver allowed the image to be displayed on a mobile phone or Windows 10. 
 
 ![First FPV camera](images/Mini-Cam-VTX.jpg)
 
@@ -130,6 +130,6 @@ A small regular expression is used to find and replace these variables, allowing
 ```
 I ran the latency tests using the VR page on my desktop browser to show WebSocket streaming speed
 
-[![Latency tests](images/youtube2.png)](http://www.youtube.com/watch?v=bJKlJWKc6aE)
+![Latency tests](images/latencyOLED.gif)
 
 I’m sure the code could be optimised further ,especially as it uses the Adafruit Graphics Library (https://github.com/adafruit/Adafruit-GFX-Library). My HTML skills are not as sharp as they could be, however for my purposes the code provides the best solution for a low latency FPV and image stream for my robot projects. 
