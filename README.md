@@ -33,7 +33,7 @@ After trying this camera for a few days I found the quality of the image is quit
 
 However the frame rate is impressive displaying a VGA output being available in the FPV Android App I used.These devices output a VGA resolution of 640H480V which sounded low to me at the beginning of this project. I'm not going to give up on  FPV drone cameras. However, I thought there might be a better way and decided to dust off my ESP32cam.
 
-[![First FPV camera recording](http://img.youtube.com/vi/bJKlJWKc6aE/0.jpg)](http://www.youtube.com/watch?v=bJKlJWKc6aE)
+[![First FPV camera recording](images/youtube1.png)](http://www.youtube.com/watch?v=bJKlJWKc6aE)
 
 However I soon found another blocker with poor WIFI signal on the ESP32Cam,  although it's not envisaged that the robot will be travelling very far from the Wifi base station. I found that the quality of the signal drops off very quickly when going between the floors of the house. So I decided to buy a TTGO T-Journal as it has many useful features including big antenna, OLED display, CP2104 USB programmer. However the ESP32-PICO-D4 package does not have as much memory (no PSRAM) as the ESP32Cam board (https://www.espressif.com/sites/default/files/documentation/esp32-pico-d4_datasheet_en.pdf). 
 
@@ -74,7 +74,6 @@ Further improvements to the code include disabling the onboard Bluetooth and dis
   //turn off bluetooth
   btStop();
 ```
-
 The code is almost completely stripped down to only serve the streaming and performance functions, in my opinion there is little reason for running machine learning on these boards as the models are too slow or lacking in features to make them useful for robotics. Making the JPEG frames available over MQTT allows the images to be processed by a platform with more processing power such as a RaspberryPi or Jetson Nano. The predictions can then be sent to the display or robot via MQTT to take appropriate action.
 
 One of the issues I encountered when using the MQTT library was the default message size is only set to 128 characters, this is not enough to send an entire JPEG image, which can range in size depending on the complexity of the image from 8kb (face down on desk) up to 25 kilobytes when viewing movement in a room. To overcome this I have set the buffer size to 30,000. This seems adequate to store the level of detail at a JPEG image of the size it could capture and some overhead for the messaging.
@@ -89,7 +88,11 @@ Latency for the system is the lag between the camera seeing an image and it bein
 
 ![Latency timings](images/latency.jpg)
 
-The last piece of the code works remarkably simply when using the PlatformIO IDE when compared to attempting the same thing in the Arduino IDE. The goal is to serve the HTML needed for viewing the video feed using WebSockets. Most examples I have seen use SPIFFs, however these take up more memory and structure on the ROM. I opted to embed the HTML file as a variable (https://docs.platformio.org/en/latest/platforms/espressif32.html#embedding-binary-data), PlatformIO makes this process so simple and the file is automatically updated each build and deploy.just by adding this command to the platformio.ini file.
+The last piece of the code works remarkably simply when using the PlatformIO IDE when compared to attempting the same thing in the Arduino IDE. The goal is to serve the HTML needed for viewing the video feed using WebSockets. 
+
+![VR HTML page](images/vr.png)
+
+Most examples I have seen use SPIFFs, however these take up more memory and structure on the ROM. I opted to embed the HTML file as a variable (https://docs.platformio.org/en/latest/platforms/espressif32.html#embedding-binary-data), PlatformIO makes this process so simple and the file is automatically updated each build and deploy.just by adding this command to the platformio.ini file.
 
 ```cpp 
     board_build.embed_txtfiles =
@@ -125,5 +128,8 @@ A small regular expression is used to find and replace these variables, allowing
     server.send(200, "text/html", resolved.c_str());
     }
 ```
+I ran the latency tests using the VR page on my desktop browser to show WebSocket streaming speed
+
+[![Latency tests](images/youtube2.png)](http://www.youtube.com/watch?v=bJKlJWKc6aE)
 
 I’m sure the code could be optimised further ,especially as it uses the Adafruit Graphics Library (https://github.com/adafruit/Adafruit-GFX-Library). My HTML skills are not as sharp as they could be, however for my purposes the code provides the best solution for a low latency FPV and image stream for my robot projects. 
