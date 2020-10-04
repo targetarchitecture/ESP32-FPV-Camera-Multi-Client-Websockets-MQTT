@@ -28,7 +28,7 @@ http://www.youtube.com/watch?v=pd8fyUSd1p8), for my purposes this latency would 
 
 After trying this camera for a few days I found the quality of the image is quite poor, and does not seem to be as good as the images that I had seen on my ESP32Cam with its OV2640. I used a webcam test site to get more details about the performance of the camera.
 
-[!Webcam testing](images/Webcam-test.png)
+![Webcam testing](images/Webcam-test.png)
 
 However the frame rate is impressive displaying a VGA output being available in the FPV Android App I used.These devices output a VGA resolution of 640H480V which sounded low to me at the beginning of this project. I'm not going to give up on  FPV drone cameras. However, I thought there might be a better way and decided to dust off my ESP32cam.
 
@@ -60,7 +60,7 @@ Running all of the code in the loop() method allows the same image to be used ac
 
 As the code isn’t serving up MJPEG most of the non-browser based AI platform don’t work with WebSockets, so I opted to use MQTT (https://en.wikipedia.org/wiki/MQTT) using a library I had used before (https://github.com/knolleary/pubsubclient). I tried the messaging on the Shiftr.io platform (https://shiftr.io/shiftr-io/demo) and simultaneously streaming to my phones browser and desktop browser and I have been impressed with the timings.
 
-[!MQTT prototyping in Shiftr.io](images/shiftr.io.png)
+![MQTT prototyping in Shiftr.io](images/shiftr.io.png)
 
 The code includes some a timing mechanism which prints out to the serial port as well as to the OLED display.
 The timings show that in even serving three WebSocket clients and sending the JPEG images in a MQTT message to the internet based Shiftr.io platform the entire loop is completed with 50 milliseconds.
