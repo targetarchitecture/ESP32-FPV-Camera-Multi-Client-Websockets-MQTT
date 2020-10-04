@@ -24,8 +24,7 @@ I had watched a few FPV drone videos and purchased a small FPV camera from a UK 
 
 ![First FPV camera](images/Mini-Cam-VTX.jpg)
 
-These devices typically have a latency of 85ms to 100ms (
-http://www.youtube.com/watch?v=pd8fyUSd1p8), for my purposes this latency would be adequate for a robot driving around. These small and low cost FPV drone cameras can be powered, with voltages that are commonplace in microprocessor projects (3.3-5.5V). 
+These devices typically have a latency of 85ms to 100ms (http://www.youtube.com/watch?v=pd8fyUSd1p8), for my purposes this latency would be adequate for a robot driving around. These small and low cost FPV drone cameras can be powered, with voltages that are commonplace in microprocessor projects (3.3-5.5V). 
 
 After trying this camera for a few days I found the quality of the image is quite poor, and does not seem to be as good as the images that I had seen on my ESP32Cam with its OV2640. I used a webcam test site to get more details about the performance of the camera.
 
