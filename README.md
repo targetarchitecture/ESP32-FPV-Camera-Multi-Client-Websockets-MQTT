@@ -49,7 +49,7 @@ Technology has moved on since MJPEG and in 2011 the WebSocket protocol was ratif
 
 Running all of the code in the loop() method allows the same image to be used across all connected devices and without any multi-core threading there is no need for a semaphore flag approach to understand when the camera is finished saving a frame.
 
-As the code isn’t serving up MJPEG most of the non-browser based AI platform don’t work with WebSockets, so I opted to use MQTT (https://en.wikipedia.org/wiki/MQTT) using a library I had used before (https://github.com/knolleary/pubsubclient). I tried the messaging on the Shiftr.io platform (https://shiftr.io/shiftr-io/demo) and simultaneously streaming to my phones browser and desktop browser and I have been impressed with the timings.
+As the code isn’t serving up MJPEG most of the non-browser based AI platform don’t work with WebSockets, so I opted to use MQTT (https://en.wikipedia.org/wiki/MQTT) using a library I had used before (https://github.com/knolleary/pubsubclient). I tried the messaging on the Shiftr.io platform (https://shiftr.io/shiftr-io/demo and https://youtu.be/hGicZsBHo9s?t=800) and simultaneously streaming to my phones browser and desktop browser and I have been impressed with the timings.
 
 The code includes some a timing mechanism which prints out to the serial port as well as to the OLED display.
 The timings show that in even serving three WebSocket clients and sending the JPEG images in a MQTT message to the internet based Shiftr.io platform the entire loop is completed with 50 milliseconds.
@@ -69,7 +69,7 @@ The code is almost completely stripped down to only serve the streaming and perf
 One of the issues I encountered when using the MQTT library was the default message size is only set to 128 characters, this is not enough to send an entire JPEG image, which can range in size depending on the complexity of the image from 8kb (face down on desk) up to 25 kilobytes when viewing movement in a room. To overcome this I have set the buffer size to 30,000. This seems adequate to store the level of detail at a JPEG image of the size it could capture and some overhead for the messaging.
 
 ```cpp 
-  MQTTClient.setBufferSize(30000);
+    MQTTClient.setBufferSize(30000);
 ``` 
 
 You can see the image size in the developer mode of your browser when viewing the WebSocket network activity.
@@ -79,38 +79,38 @@ Latency for the system is the lag between the camera seeing an image and it bein
 The last piece of the code works remarkably simply when using the PlatformIO IDE when compared to attempting the same thing in the Arduino IDE. The goal is to serve the HTML needed for viewing the video feed using WebSockets. Most examples I have seen use SPIFFs, however these take up more memory and structure on the ROM. I opted to embed the HTML file as a variable (https://docs.platformio.org/en/latest/platforms/espressif32.html#embedding-binary-data), PlatformIO makes this process so simple and the file is automatically updated each build and deploy.just by adding this command to the platformio.ini file.
 
 ```cpp 
-board_build.embed_txtfiles =
-  www/vr.html
+    board_build.embed_txtfiles =
+    www/vr.html
 ``` 
 
 When the file is requested at the board’s IP address ,ie: http://192.168.1.100/ the HTML is obtained from the .rodate section of flash. The code contains two templated variables that need to replaced, as the HTML doesn’t know the IP address in advance.
 
 ```cpp
-        function configWebSocket() {
-            var server = 'ws://{{IP}}:{{PORT}}';
-            var socket = new WebSocket(server);
-            socket.binaryType = 'arraybuffer';
+    function configWebSocket() {
+        var server = 'ws://{{IP}}:{{PORT}}';
+        var socket = new WebSocket(server);
+        socket.binaryType = 'arraybuffer';
 ```
 
 A small regular expression is used to find and replace these variables, allowing the code to be more portable.
 
 ```cpp
-//embedded files
-extern const uint8_t vrHTML_start[] asm("_binary_www_vr_html_start");
-extern const uint8_t vrHTML_end[] asm("_binary_www_vr_html_end");
- 
-void handleRoot()
-{
-  auto html = (const char *)vrHTML_start;
- 
-  auto resolved = std::regex_replace(html, std::regex("\\{\\{IP\\}\\}"), WiFi.localIP().toString().c_str());
- 
-  auto port = (String)webSocketPort;
- 
-  resolved = std::regex_replace(resolved, std::regex("\\{\\{PORT\\}\\}"), port.c_str());
- 
-  server.send(200, "text/html", resolved.c_str());
-}
+    //embedded files
+    extern const uint8_t vrHTML_start[] asm("_binary_www_vr_html_start");
+    extern const uint8_t vrHTML_end[] asm("_binary_www_vr_html_end");
+    
+    void handleRoot()
+    {
+    auto html = (const char *)vrHTML_start;
+    
+    auto resolved = std::regex_replace(html, std::regex("\\{\\{IP\\}\\}"), WiFi.localIP().toString().c_str());
+    
+    auto port = (String)webSocketPort;
+    
+    resolved = std::regex_replace(resolved, std::regex("\\{\\{PORT\\}\\}"), port.c_str());
+    
+    server.send(200, "text/html", resolved.c_str());
+    }
 ```
 
 I’m sure the code could be optimised further ,especially as it uses the Adafruit Graphics Library (https://github.com/adafruit/Adafruit-GFX-Library). My HTML skills are not as sharp as they could be, however for my purposes the code provides the best solution for a low latency FPV and image stream for my robot projects. 
