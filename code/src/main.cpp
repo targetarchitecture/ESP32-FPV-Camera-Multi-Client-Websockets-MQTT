@@ -18,6 +18,9 @@
 #define CAMERA_MODEL_TTGO_T_JOURNAL
 #include "camera_pins.h"
 
+// comment out if MQTT not required
+#define USE_MQTT
+
 // Set the OLED parameters
 #define SCREEN_WIDTH 128
 #define SCREEN_HEIGHT 32
@@ -40,8 +43,13 @@ auto webServerPort = 80;
 WebSocketsServer webSocket = WebSocketsServer(webSocketPort);
 WebServer server(webServerPort);
 WiFiClient client;
-PubSubClient MQTTClient;
+
 Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, -1);
+
+//MQTT definitions
+#if defined(USE_MQTT)
+PubSubClient MQTTClient;
+#endif
 
 //embedded files
 extern const uint8_t vrHTML_start[] asm("_binary_www_vr_html_start");
@@ -113,6 +121,8 @@ void setup(void)
   webSocket.begin();
   webSocket.onEvent(webSocketEvent);
 
+//only include if using MQTT
+#if defined(USE_MQTT)
   //set this to be a large enough value to allow an MQTT message containing a 22Kb JPEG to be sent
   MQTTClient.setBufferSize(30000);
 
@@ -125,36 +135,113 @@ void setup(void)
   {
     Serial.println("Connected to MQTT server");
   }
+#endif
 
+  //define web server endpoints and 404
   server.on("/", handleRoot);
   server.onNotFound(handle404);
 
   server.begin();
   Serial.println("HTTP server started");
 
+  //some info
   Serial.printf("Total heap: %d \n", ESP.getHeapSize());
   Serial.printf("Free heap: %d \n", ESP.getFreeHeap());
 }
 
-void webSocketEvent(uint8_t num, WStype_t type, uint8_t *payload, size_t length)
+void loop(void)
 {
-  switch (type)
+  webSocket.loop();
+  server.handleClient();
+
+  //get the camera feed
+  int64_t fr_start = esp_timer_get_time();
+
+  camera_fb_t *fb = NULL;
+  fb = esp_camera_fb_get();
+
+  if (!fb)
   {
-  case WStype_DISCONNECTED:
-    Serial.printf("[%u] Disconnected!\n", num);
-    if (num < 3)
-    {
-      clientConnected[num] = false;
-    }
-    break;
-  case WStype_CONNECTED:
-    Serial.printf("[%u] Connected Client Id!\n", num);
-    if (num < 3)
-    {
-      clientConnected[num] = true;
-    }
-    break;
+    Serial.println("Frame buffer could not be acquired");
+    delay(10000);
+    ESP.restart();
   }
+
+  uint32_t fb_len = fb->len;
+
+  // if (fb_len > max_fb_len)
+  // {
+  //   max_fb_len = fb_len;
+  //   Serial.print("Framebuffer Length : ");
+  //   Serial.println(max_fb_len);
+  // }
+
+  uint32_t webSockets = 0;
+
+  for (int camNo = 0; camNo < 3; camNo++)
+  {
+    if (clientConnected[camNo] == true)
+    {
+      webSockets++;
+
+      webSocket.sendBIN(camNo, fb->buf, fb_len);
+    }
+  }
+
+//only include if using MQTT
+#if defined(USE_MQTT)
+
+  if (MQTTClient.connected())
+  {
+    MQTTClient.publish(MQTT_TOPIC, fb->buf, fb_len);
+  }
+  else
+  {
+    if (MQTTClient.connect(MQTT_CLIENTID, MQTT_USERNAME, MQTT_KEY))
+    {
+      Serial.println("Reconnected");
+    }
+  }
+#endif
+
+  delay(10);
+
+  //return the frame buffer back to be reused
+  esp_camera_fb_return(fb);
+
+  int64_t fr_end = esp_timer_get_time();
+  uint32_t timeToCompleteLoopMs = ((fr_end - fr_start) / 1000);
+
+  display.clearDisplay();
+  display.setTextSize(1);
+  display.setTextColor(WHITE);
+  display.setCursor(0, 0);
+  display.printf("JPEG: %u Kb\n", (uint32_t)(fb_len) / 1024);
+  display.printf("TIME: %u ms\n", timeToCompleteLoopMs);
+  display.printf("CLIENTS: %u\n", webSockets);
+  display.printf("FPS: %u\n", calculateAVGFPS(timeToCompleteLoopMs));
+  display.display();
+}
+
+int calculateAVGFPS(int frameTime)
+{
+  if (frameIndex == framesToAvg)
+  {
+    frameIndex = 0;
+  }
+
+  frameTimings[frameIndex] = frameTime;
+
+  frameIndex++;
+
+  //loop through and get average
+  int sum = 0;
+  for (int i = 0; i < framesToAvg; i++)
+  {
+    sum += frameTimings[i];
+  }
+
+  return (int)sum / framesToAvg;
 }
 
 int initCamera()
@@ -200,96 +287,29 @@ int initCamera()
   return 0;
 }
 
-void loop(void)
+
+
+void webSocketEvent(uint8_t num, WStype_t type, uint8_t *payload, size_t length)
 {
-  webSocket.loop();
-  server.handleClient();
-
-  //get the camera feed
-  int64_t fr_start = esp_timer_get_time();
-
-  camera_fb_t *fb = NULL;
-  fb = esp_camera_fb_get();
-
-  if (!fb)
+  switch (type)
   {
-    Serial.println("Frame buffer could not be acquired");
-    delay(10000);
-    ESP.restart();
-  }
-
-  uint32_t fb_len = fb->len;
-
-  // if (fb_len > max_fb_len)
-  // {
-  //   max_fb_len = fb_len;
-  //   Serial.print("Framebuffer Length : ");
-  //   Serial.println(max_fb_len);
-  // }
-
-  uint32_t webSockets = 0;
-
-  for (int camNo = 0; camNo < 3; camNo++)
-  {
-    if (clientConnected[camNo] == true)
+  case WStype_DISCONNECTED:
+    Serial.printf("[%u] Disconnected!\n", num);
+    if (num < 3)
     {
-      webSockets++;
-
-      webSocket.sendBIN(camNo, fb->buf, fb_len);
+      clientConnected[num] = false;
     }
-  }
-
-  if (MQTTClient.connected())
-  {
-    MQTTClient.publish(MQTT_TOPIC, fb->buf, fb_len);
-  }
-  else
-  {
-    if (MQTTClient.connect(MQTT_CLIENTID, MQTT_USERNAME, MQTT_KEY))
+    break;
+  case WStype_CONNECTED:
+    Serial.printf("[%u] Connected Client Id!\n", num);
+    if (num < 3)
     {
-      Serial.println("Reconnected");
+      clientConnected[num] = true;
     }
+    break;
   }
-
-  delay(10);
-
-  //return the frame buffer back to be reused
-  esp_camera_fb_return(fb);
-
-  int64_t fr_end = esp_timer_get_time();
-  uint32_t timeToCompleteLoopMs = ((fr_end - fr_start) / 1000);
-
-  display.clearDisplay();
-  display.setTextSize(1);
-  display.setTextColor(WHITE);
-  display.setCursor(0, 0);
-  display.printf("JPEG: %u Kb\n", (uint32_t)(fb_len) / 1024);
-  display.printf("TIME: %u ms\n", timeToCompleteLoopMs);
-  display.printf("CLIENTS: %u\n", webSockets);
-  display.printf("FPS: %u\n", calculateAVGFPS(timeToCompleteLoopMs));
-  display.display();
 }
 
-int calculateAVGFPS(int frameTime)
-{
-  if (frameIndex == framesToAvg)
-  {
-    frameIndex = 0;
-  }
-
-  frameTimings[frameIndex] = frameTime;
-
-  frameIndex++;
-
-  //loop through and get average
-  int sum = 0;
-  for (int i = 0; i < framesToAvg; i++)
-  {
-    sum += frameTimings[i];
-  }
-
-  return (int)sum / framesToAvg;
-}
 
 void handleRoot()
 {
@@ -301,7 +321,7 @@ void handleRoot()
 
   resolved = std::regex_replace(resolved, std::regex("\\{\\{PORT\\}\\}"), port.c_str());
 
-  Serial.println(resolved.c_str());
+  //Serial.println(resolved.c_str());
 
   server.send(200, "text/html", resolved.c_str());
 }
