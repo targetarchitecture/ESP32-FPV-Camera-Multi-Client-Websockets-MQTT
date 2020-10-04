@@ -21,12 +21,14 @@ Fast forward to October 2020, with time on my hands due to the pandemic curtaili
 
 I had watched a few FPV drone videos and purchased a small FPV camera from a UK company (https://www.flyingtech.co.uk/). This helped me make sure it was a legal transmitter as 25mW. The camera works at 5.8Ghz and has 1200TVL (TV lines) which claims to have effective image size 1280Hx1024V. This is about as good as it gets for analog cameras. Paired with a USB OTG UVC (Universal Video Class) 5.8Ghz receiver allowed the image to be displayed on a mobile phone or Windows 10. 
 
+[![First FPV camera](images/Mini-Cam-VTX.jpg)]
+
 These devices typically have a latency of 85ms to 100ms (
 (http://www.youtube.com/watch?v=pd8fyUSd1p8)), for my purposes this latency would be adequate for a robot driving around. These small and low cost FPV drone cameras can be powered, with voltages that are commonplace in microprocessor projects (3.3-5.5V). 
 
 After trying this camera for a few days I found the quality of the image is quite poor, and does not seem to be as good as the images that I had seen on my ESP32Cam with its OV2640. However the frame rate is impressive displaying a VGA output being available in the FPV Android App I used.These devices output a VGA resolution of 640H480V which sounded low to me at the beginning of this project. I'm not going to give up on  FPV drone cameras. However, I thought there might be a better way and decided to dust off my ESP32cam.
 
-[![First FPV camera recording](http://img.youtube.com/vi/bJKlJWKc6aE /0.jpg)](http://www.youtube.com/watch?v=bJKlJWKc6aE)
+[![First FPV camera recording](http://img.youtube.com/vi/bJKlJWKc6aE/0.jpg)](http://www.youtube.com/watch?v=bJKlJWKc6aE)
 
 However I soon found another blocker with poor WIFI signal on the ESP32Cam,  although it's not envisaged that the robot will be travelling very far from the Wifi base station. I found that the quality of the signal drops off very quickly when going between the floors of the house. So I decided to buy a TTGO T-Journal as it has many useful features including big antenna, OLED display, CP2104 USB programmer. However the ESP32-PICO-D4 package does not have as much memory (no PSRAM) as the ESP32Cam board (https://www.espressif.com/sites/default/files/documentation/esp32-pico-d4_datasheet_en.pdf). 
 
