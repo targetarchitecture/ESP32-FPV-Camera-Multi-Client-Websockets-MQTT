@@ -10,6 +10,7 @@
 * Onboard OLED display of performance and statistics
 * Self-contained HTML for VR goggle display
 
+![TTGO T-Journal](images/title.jpg)
 
 # Background:
 
@@ -21,7 +22,7 @@ Fast forward to October 2020, with time on my hands due to the pandemic curtaili
 
 I had watched a few FPV drone videos and purchased a small FPV camera from a UK company (https://www.flyingtech.co.uk/). This helped me make sure it was a legal transmitter as 25mW. The camera works at 5.8Ghz and has 1200TVL (TV lines) which claims to have effective image size 1280Hx1024V. This is about as good as it gets for analog cameras. Paired with a USB OTG UVC (Universal Video Class) 5.8Ghz receiver allowed the image to be displayed on a mobile phone or Windows 10. 
 
-[!First FPV camera(images/Mini-Cam-VTX.jpg)]
+![First FPV camera](images/Mini-Cam-VTX.jpg)
 
 These devices typically have a latency of 85ms to 100ms (
 http://www.youtube.com/watch?v=pd8fyUSd1p8), for my purposes this latency would be adequate for a robot driving around. These small and low cost FPV drone cameras can be powered, with voltages that are commonplace in microprocessor projects (3.3-5.5V). 
@@ -62,8 +63,7 @@ As the code isn’t serving up MJPEG most of the non-browser based AI platform d
 
 ![MQTT prototyping in Shiftr.io](images/shiftr.io.png)
 
-The code includes some a timing mechanism which prints out to the serial port as well as to the OLED display.
-The timings show that in even serving three WebSocket clients and sending the JPEG images in a MQTT message to the internet based Shiftr.io platform the entire loop is completed with 50 milliseconds.
+The code includes some a timing mechanism which prints out to the serial port as well as to the OLED display. The timings show that in even serving three WebSocket clients and sending the JPEG images in a MQTT message to the internet based Shiftr.io platform the entire loop is completed with 50 milliseconds.
 
 Further improvements to the code include disabling the onboard Bluetooth and disabling the brown out detector.
 
@@ -85,7 +85,9 @@ One of the issues I encountered when using the MQTT library was the default mess
 
 You can see the image size in the developer mode of your browser when viewing the WebSocket network activity.
 
-Latency for the system is the lag between the camera seeing an image and it being visible in the VR headset. For the latency checks it is worth noting that the code is also transmitting the JPEG frame to a local MQTT broker running on RaspberryPi Zero W. The latency of the system was measured at around 170 milliseconds ,for a drone this is too long , however for a robot travelling at one mile per hour it’s not important.
+Latency for the system is the lag between the camera seeing an image and it being visible in the VR headset. For the latency checks it is worth noting that the code is also transmitting the JPEG frame to a local MQTT broker running on RaspberryPi Zero W. The latency of the system was measured at around 175 milliseconds ,for a drone this is too long , however for a robot travelling at one mile per hour it’s not important.
+
+![Latency timings](images/latency.jpg)
 
 The last piece of the code works remarkably simply when using the PlatformIO IDE when compared to attempting the same thing in the Arduino IDE. The goal is to serve the HTML needed for viewing the video feed using WebSockets. Most examples I have seen use SPIFFs, however these take up more memory and structure on the ROM. I opted to embed the HTML file as a variable (https://docs.platformio.org/en/latest/platforms/espressif32.html#embedding-binary-data), PlatformIO makes this process so simple and the file is automatically updated each build and deploy.just by adding this command to the platformio.ini file.
 
