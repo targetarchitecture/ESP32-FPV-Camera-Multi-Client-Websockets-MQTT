@@ -21,12 +21,16 @@ Fast forward to October 2020, with time on my hands due to the pandemic curtaili
 
 I had watched a few FPV drone videos and purchased a small FPV camera from a UK company (https://www.flyingtech.co.uk/). This helped me make sure it was a legal transmitter as 25mW. The camera works at 5.8Ghz and has 1200TVL (TV lines) which claims to have effective image size 1280Hx1024V. This is about as good as it gets for analog cameras. Paired with a USB OTG UVC (Universal Video Class) 5.8Ghz receiver allowed the image to be displayed on a mobile phone or Windows 10. 
 
-[![First FPV camera](images/Mini-Cam-VTX.jpg)]
+[!First FPV camera(images/Mini-Cam-VTX.jpg)]
 
 These devices typically have a latency of 85ms to 100ms (
-(http://www.youtube.com/watch?v=pd8fyUSd1p8)), for my purposes this latency would be adequate for a robot driving around. These small and low cost FPV drone cameras can be powered, with voltages that are commonplace in microprocessor projects (3.3-5.5V). 
+http://www.youtube.com/watch?v=pd8fyUSd1p8), for my purposes this latency would be adequate for a robot driving around. These small and low cost FPV drone cameras can be powered, with voltages that are commonplace in microprocessor projects (3.3-5.5V). 
 
-After trying this camera for a few days I found the quality of the image is quite poor, and does not seem to be as good as the images that I had seen on my ESP32Cam with its OV2640. However the frame rate is impressive displaying a VGA output being available in the FPV Android App I used.These devices output a VGA resolution of 640H480V which sounded low to me at the beginning of this project. I'm not going to give up on  FPV drone cameras. However, I thought there might be a better way and decided to dust off my ESP32cam.
+After trying this camera for a few days I found the quality of the image is quite poor, and does not seem to be as good as the images that I had seen on my ESP32Cam with its OV2640. I used a webcam test site to get more details about the performance of the camera.
+
+[!Webcam testing](images/Webcam-test.png)
+
+However the frame rate is impressive displaying a VGA output being available in the FPV Android App I used.These devices output a VGA resolution of 640H480V which sounded low to me at the beginning of this project. I'm not going to give up on  FPV drone cameras. However, I thought there might be a better way and decided to dust off my ESP32cam.
 
 [![First FPV camera recording](http://img.youtube.com/vi/bJKlJWKc6aE/0.jpg)](http://www.youtube.com/watch?v=bJKlJWKc6aE)
 
@@ -54,7 +58,9 @@ Technology has moved on since MJPEG and in 2011 the WebSocket protocol was ratif
 
 Running all of the code in the loop() method allows the same image to be used across all connected devices and without any multi-core threading there is no need for a semaphore flag approach to understand when the camera is finished saving a frame.
 
-As the code isn’t serving up MJPEG most of the non-browser based AI platform don’t work with WebSockets, so I opted to use MQTT (https://en.wikipedia.org/wiki/MQTT) using a library I had used before (https://github.com/knolleary/pubsubclient). I tried the messaging on the Shiftr.io platform (https://shiftr.io/shiftr-io/demo and https://youtu.be/hGicZsBHo9s?t=800) and simultaneously streaming to my phones browser and desktop browser and I have been impressed with the timings.
+As the code isn’t serving up MJPEG most of the non-browser based AI platform don’t work with WebSockets, so I opted to use MQTT (https://en.wikipedia.org/wiki/MQTT) using a library I had used before (https://github.com/knolleary/pubsubclient). I tried the messaging on the Shiftr.io platform (https://shiftr.io/shiftr-io/demo) and simultaneously streaming to my phones browser and desktop browser and I have been impressed with the timings.
+
+[!MQTT prototyping in Shiftr.io](images/shiftr.io.png)
 
 The code includes some a timing mechanism which prints out to the serial port as well as to the OLED display.
 The timings show that in even serving three WebSocket clients and sending the JPEG images in a MQTT message to the internet based Shiftr.io platform the entire loop is completed with 50 milliseconds.
