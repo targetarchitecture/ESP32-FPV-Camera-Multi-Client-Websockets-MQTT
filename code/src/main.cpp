@@ -13,6 +13,7 @@
 #include "soc/rtc_cntl_reg.h"
 #include <string>
 #include <regex>
+#include "MovingAverage.h"
 
 // Select camera model - LILYGO® TTGO T-Journal
 #define CAMERA_MODEL_TTGO_T_JOURNAL
@@ -27,17 +28,16 @@
 #define I2C_SDA 14
 #define I2C_SCL 13
 
-//averaging calculation
-#define framesToAvg 100
-int frameTimings[framesToAvg];
-int frameIndex = 0;
-
-//holds the webSocket client tracker (TODO: improve design so more than 3 websockets can be used)
-bool clientConnected[3] = {false, false, false};
+//averaging calculations
+#define framesToAvg 32
+MovingAverage<uint8_t, framesToAvg> loopAvg;
+MovingAverage<uint8_t, framesToAvg> mqttAvg;
+MovingAverage<uint8_t, framesToAvg> wsAvg;
+uint32_t timeToCompleteMQTTMs = 0;
 
 //define port numbers
-auto webSocketPort = 81;
-auto webServerPort = 80;
+#define webSocketPort 81
+#define webServerPort 80
 
 //object declaration
 WebSocketsServer webSocket = WebSocketsServer(webSocketPort);
@@ -104,8 +104,6 @@ void setup(void)
   display.setTextColor(WHITE);
   display.setCursor(5, 5);
   display.print(WiFi.localIP());
-  display.print(":");
-  display.println(webSocketPort);
   display.display();
 
   int cameraInitState = initCamera();
@@ -151,11 +149,11 @@ void setup(void)
 
 void loop(void)
 {
+  //get the camera feed
+  int64_t loop_start = esp_timer_get_time();
+
   webSocket.loop();
   server.handleClient();
-
-  //get the camera feed
-  int64_t fr_start = esp_timer_get_time();
 
   camera_fb_t *fb = NULL;
   fb = esp_camera_fb_get();
@@ -176,20 +174,10 @@ void loop(void)
   //   Serial.println(max_fb_len);
   // }
 
-  uint32_t webSockets = 0;
-
-  for (int camNo = 0; camNo < 3; camNo++)
-  {
-    if (clientConnected[camNo] == true)
-    {
-      webSockets++;
-
-      webSocket.sendBIN(camNo, fb->buf, fb_len);
-    }
-  }
-
 //only include if using MQTT
 #if defined(USE_MQTT)
+
+  int64_t MQTT_start = esp_timer_get_time();
 
   if (MQTTClient.connected())
   {
@@ -202,46 +190,41 @@ void loop(void)
       Serial.println("Reconnected");
     }
   }
+
+  int64_t MQTT_end = esp_timer_get_time();
+
+  timeToCompleteMQTTMs = mqttAvg.add((MQTT_end - MQTT_start) / 1000);
+
 #endif
 
-  delay(10);
+  int64_t ws_start = esp_timer_get_time();
+
+  //broadcast to all connected clients
+  webSocket.broadcastBIN(fb->buf, fb_len);
+
+  int64_t ws_end = esp_timer_get_time();
+  uint8_t timeToCompleteWSMs = wsAvg.add((ws_end - ws_start) / 1000);
+
+  //Not sure this is needed as broadcastBIN has a yield function call
+  //delay(10);
 
   //return the frame buffer back to be reused
   esp_camera_fb_return(fb);
 
-  int64_t fr_end = esp_timer_get_time();
-  uint32_t timeToCompleteLoopMs = ((fr_end - fr_start) / 1000);
+  int64_t loop_end = esp_timer_get_time();
+  uint8_t timeToCompleteLoopMs = loopAvg.add((loop_end - loop_start) / 1000);
+  
+  uint8_t fps = (int)1000 / timeToCompleteLoopMs;
 
   display.clearDisplay();
   display.setTextSize(1);
   display.setTextColor(WHITE);
   display.setCursor(0, 0);
   display.printf("JPEG: %u Kb\n", (uint32_t)(fb_len) / 1024);
-  display.printf("TIME: %u ms\n", timeToCompleteLoopMs);
-  display.printf("CLIENTS: %u\n", webSockets);
-  display.printf("FPS: %u\n", calculateAVGFPS(timeToCompleteLoopMs));
+  display.printf("MQTT: %u ms WS: %u ms\n", timeToCompleteMQTTMs,timeToCompleteWSMs);
+  display.printf("LOOP TIME: %u ms\n", timeToCompleteLoopMs);
+  display.printf("CLIENTS: %u  FPS: %u\n", webSocket.connectedClients(), fps);
   display.display();
-}
-
-int calculateAVGFPS(int frameTime)
-{
-  if (frameIndex == framesToAvg)
-  {
-    frameIndex = 0;
-  }
-
-  frameTimings[frameIndex] = frameTime;
-
-  frameIndex++;
-
-  //loop through and get average
-  int sum = 0;
-  for (int i = 0; i < framesToAvg; i++)
-  {
-    sum += frameTimings[i];
-  }
-
-  return (int)sum / framesToAvg;
 }
 
 int initCamera()
@@ -287,29 +270,18 @@ int initCamera()
   return 0;
 }
 
-
-
 void webSocketEvent(uint8_t num, WStype_t type, uint8_t *payload, size_t length)
 {
   switch (type)
   {
   case WStype_DISCONNECTED:
     Serial.printf("[%u] Disconnected!\n", num);
-    if (num < 3)
-    {
-      clientConnected[num] = false;
-    }
     break;
   case WStype_CONNECTED:
     Serial.printf("[%u] Connected Client Id!\n", num);
-    if (num < 3)
-    {
-      clientConnected[num] = true;
-    }
     break;
   }
 }
-
 
 void handleRoot()
 {
@@ -320,8 +292,6 @@ void handleRoot()
   auto port = (String)webSocketPort;
 
   resolved = std::regex_replace(resolved, std::regex("\\{\\{PORT\\}\\}"), port.c_str());
-
-  //Serial.println(resolved.c_str());
 
   server.send(200, "text/html", resolved.c_str());
 }
