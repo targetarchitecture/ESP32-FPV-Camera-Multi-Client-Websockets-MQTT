@@ -22,7 +22,7 @@ Fast forward to October 2020, with time on my hands due to the pandemic curtaili
 
 I had watched a few FPV drone videos and purchased a small FPV camera from a UK company (https://www.flyingtech.co.uk/), this helped me make sure it was a legal transmitter at 25mW. The camera works at 5.8Ghz and has 1200TVL (TV lines) which claims to have effective image size 1280Hx1024V. This is about as good as it gets for analog cameras. Paired with a USB OTG UVC (Universal Video Class) 5.8Ghz receiver allowed the image to be displayed on a mobile phone or Windows 10. 
 
-| ![First FPV camera](images/Mini-Cam-VTX.jpg) | ![First FPV receiver](images/receiver.jpg) |
+![First FPV camera](images/Mini-Cam-VTX.jpg)  ![First FPV receiver](images/receiver.jpg) 
 
 These devices typically have a latency of 85ms to 100ms (http://www.youtube.com/watch?v=pd8fyUSd1p8), for my purposes this latency would be adequate for a robot driving around. These small and low cost FPV drone cameras can be powered, with voltages that are commonplace in microprocessor projects (3.3-5.5V). 
 
