@@ -54,11 +54,14 @@ PubSubClient MQTTClient;
 //embedded files
 extern const uint8_t vrHTML_start[] asm("_binary_www_vr_html_start");
 extern const uint8_t vrHTML_end[] asm("_binary_www_vr_html_end");
+extern const uint8_t cocossdHTML_start[] asm("_binary_www_cocossd_html_start");
+extern const uint8_t cocossdHTML_end[] asm("_binary_www_cocossd_html_end");
 
 //function declaration
 void webSocketEvent(uint8_t num, WStype_t type, uint8_t *payload, size_t length);
 int initCamera();
 void handleRoot();
+void handleCocossd();
 void handle404();
 int calculateAVGFPS(int frameTime);
 
@@ -137,6 +140,7 @@ void setup(void)
 
   //define web server endpoints and 404
   server.on("/", handleRoot);
+  server.on("/cocossd", handleCocossd);
   server.onNotFound(handle404);
 
   server.begin();
@@ -213,7 +217,7 @@ void loop(void)
 
   int64_t loop_end = esp_timer_get_time();
   uint8_t timeToCompleteLoopMs = loopAvg.add((loop_end - loop_start) / 1000);
-  
+
   uint8_t fps = (int)1000 / timeToCompleteLoopMs;
 
   display.clearDisplay();
@@ -221,7 +225,7 @@ void loop(void)
   display.setTextColor(WHITE);
   display.setCursor(0, 0);
   display.printf("JPEG: %u Kb\n", (uint32_t)(fb_len) / 1024);
-  display.printf("MQTT: %u ms WS: %u ms\n", timeToCompleteMQTTMs,timeToCompleteWSMs);
+  display.printf("MQTT: %u ms WS: %u ms\n", timeToCompleteMQTTMs, timeToCompleteWSMs);
   display.printf("LOOP TIME: %u ms\n", timeToCompleteLoopMs);
   display.printf("CLIENTS: %u  FPS: %u\n", webSocket.connectedClients(), fps);
   display.display();
@@ -250,7 +254,7 @@ int initCamera()
   config.pin_reset = RESET_GPIO_NUM;
   config.xclk_freq_hz = 10000000;
   config.pixel_format = PIXFORMAT_JPEG;
-  config.frame_size = FRAMESIZE_VGA;
+  config.frame_size = FRAMESIZE_VGA; 
   config.jpeg_quality = 15;
   config.fb_count = 2;
 
@@ -286,6 +290,19 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t *payload, size_t length)
 void handleRoot()
 {
   auto html = (const char *)vrHTML_start;
+
+  auto resolved = std::regex_replace(html, std::regex("\\{\\{IP\\}\\}"), WiFi.localIP().toString().c_str());
+
+  auto port = (String)webSocketPort;
+
+  resolved = std::regex_replace(resolved, std::regex("\\{\\{PORT\\}\\}"), port.c_str());
+
+  server.send(200, "text/html", resolved.c_str());
+}
+
+void handleCocossd()
+{
+  auto html = (const char *)cocossdHTML_start;
 
   auto resolved = std::regex_replace(html, std::regex("\\{\\{IP\\}\\}"), WiFi.localIP().toString().c_str());
 

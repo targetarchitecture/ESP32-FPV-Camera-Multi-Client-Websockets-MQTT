@@ -1,0 +1,97 @@
+<html>
+
+<head>
+  <title>Object detection using COCO-SSD and ML5</title>
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+  <script src="https://unpkg.com/ml5@0.5.0/dist/ml5.min.js"></script>
+</head>
+
+<body bgcolor="green">
+  <p>
+  <h1>Object detection using COCO-SSD and ML5</h1>
+  </p>
+  <p id="state"></p>
+  <p>
+    <canvas id="fpv" width="640" height="480">
+      Your browser does not support the HTML5 canvas tag.</canvas>
+  </p>
+  <script>
+
+    let detector;
+    let canvas = document.getElementById("fpv");
+    let ctx = canvas.getContext("2d");
+
+    $(document).ready(function () {
+      if (!('WebSocket' in window)) {
+        alert('Your browser does not support websockets');
+      } else {
+        $('#state').text('configuring websockets');
+
+        configWebSocket();
+
+        $('#state').text('loading model');
+
+        detector = ml5.objectDetector('cocossd', modelReady);
+      }
+    });
+
+    function modelReady() {
+      $('#state').text('model loaded');
+    }
+
+    function gotResults(err, results) {
+      if (err) {
+        console.log(err);
+        return
+      }
+
+      if (results.length > 0) {
+        for (let i = 0; i < results.length; i++) {
+
+          ctx.beginPath();
+          ctx.strokeStyle = "#ff8040";
+          ctx.rect(results[i].x, results[i].y, results[i].width, results[i].height);
+          ctx.stroke();
+
+          ctx.fillStyle = "#ff8040";
+          ctx.font = "30px Arial";
+          ctx.fillText(results[0].label + " " + Math.round(results[0].confidence * 100.0) + "%", results[i].x + 5, results[i].y + 25);
+        }
+      }
+    }
+
+    function configWebSocket() {
+      var server = 'ws://{{IP}}:{{PORT}}';
+      var socket = new WebSocket(server);
+      socket.binaryType = 'arraybuffer';
+      if (socket) {
+        socket.onopen = function () {
+        }
+        socket.onmessage = async function (msg) {
+          var bytes = new Uint8Array(msg.data);
+          var binary = '';
+          var len = bytes.byteLength;
+          for (var i = 0; i < len; i++) {
+            binary += String.fromCharCode(bytes[i])
+          }
+
+          var img = new Image();
+          img.src = 'data:image/jpg;base64,' + window.btoa(binary);
+
+          img.onload = function () {
+            ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+            detector.detect(img, gotResults);
+          };
+        }
+        socket.onclose = function () {
+          $('#state').text('The connection has been closed.');
+        }
+      }
+    }
+
+
+  </script>
+</body>
+
+</html>
