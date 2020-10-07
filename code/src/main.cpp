@@ -56,12 +56,15 @@ extern const uint8_t vrHTML_start[] asm("_binary_www_vr_html_start");
 extern const uint8_t vrHTML_end[] asm("_binary_www_vr_html_end");
 extern const uint8_t cocossdHTML_start[] asm("_binary_www_cocossd_html_start");
 extern const uint8_t cocossdHTML_end[] asm("_binary_www_cocossd_html_end");
+extern const uint8_t fullscreenHTML_start[] asm("_binary_www_fullscreen_html_start");
+extern const uint8_t fullscreenHTML_end[] asm("_binary_www_fullscreen_html_end");
 
 //function declaration
 void webSocketEvent(uint8_t num, WStype_t type, uint8_t *payload, size_t length);
 int initCamera();
 void handleRoot();
 void handleCocossd();
+void handleFullScreen();
 void handle404();
 int calculateAVGFPS(int frameTime);
 
@@ -141,6 +144,7 @@ void setup(void)
   //define web server endpoints and 404
   server.on("/", handleRoot);
   server.on("/cocossd", handleCocossd);
+  server.on("/fullscreen", handleFullScreen);
   server.onNotFound(handle404);
 
   server.begin();
@@ -254,7 +258,7 @@ int initCamera()
   config.pin_reset = RESET_GPIO_NUM;
   config.xclk_freq_hz = 10000000;
   config.pixel_format = PIXFORMAT_JPEG;
-  config.frame_size = FRAMESIZE_VGA; 
+  config.frame_size = FRAMESIZE_VGA;
   config.jpeg_quality = 15;
   config.fb_count = 2;
 
@@ -303,6 +307,19 @@ void handleRoot()
 void handleCocossd()
 {
   auto html = (const char *)cocossdHTML_start;
+
+  auto resolved = std::regex_replace(html, std::regex("\\{\\{IP\\}\\}"), WiFi.localIP().toString().c_str());
+
+  auto port = (String)webSocketPort;
+
+  resolved = std::regex_replace(resolved, std::regex("\\{\\{PORT\\}\\}"), port.c_str());
+
+  server.send(200, "text/html", resolved.c_str());
+}
+
+void handleFullScreen()
+{
+  auto html = (const char *)fullscreenHTML_start;
 
   auto resolved = std::regex_replace(html, std::regex("\\{\\{IP\\}\\}"), WiFi.localIP().toString().c_str());
 

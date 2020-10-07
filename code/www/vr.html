@@ -5,36 +5,32 @@
     <meta charset="UTF-8">
     <title>VR headset</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
-    <style>
-        /* Three image containers (use 25% for four, and 50% for two, etc) */
-        .column {
-            float: left;
-            width: 45%;
-            padding: 5px;
-        }
-
-        /* Clear floats after image containers */
-        .row::after {
-            content: "";
-            clear: both;
-            display: table;
-        }
-
-        body {
-            background-color: black;
-        }
-    </style>
 </head>
 
-<body>
-    <div class="row">
-        <div class="column"><img id="STREAML" alt="Left" style="width:100%"></div>
-        <div class="column"><img id="STREAMR" alt="Right" style="width:100%"></div>
-    </div>
+<body style="background-color: black;">
+    <table style="width:100%;text-align:center;" onclick="openFullscreen();">
+        <tr>
+            <td style="width:50%;text-align:center;"><img id="STREAML" alt="Left" style="width:100%"></td>
+            <td style="width:10px;text-align:center;">&nbsp;</td>
+            <td style="width:50%;text-align:center;"><img id="STREAMR" alt="Right" style="width:100%"></td>
+        </tr>
+    </table>
 
     <script>
 
-        var init = false;
+        var elem = document.documentElement;
+
+        function openFullscreen() {
+            if (elem.requestFullscreen) {
+                elem.requestFullscreen();
+            } else if (elem.mozRequestFullScreen) { 
+                elem.mozRequestFullScreen();
+            } else if (elem.webkitRequestFullscreen) { 
+                elem.webkitRequestFullscreen();
+            } else if (elem.msRequestFullscreen) { 
+                elem.msRequestFullscreen();
+            }
+        };
 
         $(document).ready(function () {
             if (!('WebSocket' in window)) {
@@ -50,7 +46,7 @@
             socket.binaryType = 'arraybuffer';
             if (socket) {
                 socket.onopen = function () {
-                } 
+                }
                 socket.onmessage = async function (msg) {
                     var bytes = new Uint8Array(msg.data);
                     var binary = '';
@@ -64,9 +60,7 @@
                     var imgR = document.getElementById('STREAMR');
                     imgR.src = 'data:image/jpg;base64,' + window.btoa(binary);
                 }
-                socket.onclose = function () {
-                    showServerResponse('The connection has been closed.');
-                }
+                socket.onclose = function () { }
             }
         }
     </script>
