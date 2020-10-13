@@ -2,13 +2,16 @@
 
 * Uses ESP32-PICO TTGO T-Journal board 
 * Requires no PSRAM
-* VGA dimension JPEG suitable for COCO-SSD models
+* Onboard OLED display of performance and statistics
 * Low latency of 28-35 milliseconds to complete the loop() method
-* Frame rates of 25 FPS
+* Frame rates of 25 FPS 
+* VGA dimension JPEG suitable for COCO-SSD model
 * Multi-client video feed using WebSockets
 * Publishing of JPEG frames to an MQTT broker
-* Onboard OLED display of performance and statistics
-* Self-contained HTML for VR goggle display
+* HTTP server serving flash based HTML files
+* HTML page for VR goggle display
+* HTML page for full-screen display
+* HTML page for object detection using ML5.js and the COCO-SSD model 
 
 ![TTGO T-Journal](images/title.jpg)
 
