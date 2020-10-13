@@ -130,20 +130,65 @@ The HTTP server has three pages it can serve
 
 <table>
 <tr>
-    <td>Key 1</td>
-    <td>Value 1</td>
+    <td>http://{{IP}}/ </td>
+    <td>Dual screen VR headset page</td>
 </tr>
 <tr>
-    <td>Key 2</td>
-    <td>Value 2</td>
+    <td>http://{{IP}}/fullscreen</td>
+    <td>Full screen display, allowing F11 to show full screen</td>
+</tr>
+<tr>
+    <td>http://{{IP}}/cocossd</td>
+    <td>Displays a single video area with COCO-SSD object detection</td>
 </tr>
 </table>
 
+# Browser based object detection using COCO-SSD
 
------------- | -------------
-http://{{IP}}/  |  Dual screen VR headset page
-http://{{IP}}/fullscreen | Full screen display, allowing F11 to show full screen
-http://{{IP}}/cocossd | Displays a single video area with COCO-SSD object detection
+Early in 2020 I learnt about Machine Learning (a branch of Artifical Intelligence) and built a "magic wand" that is combined with a browser based Convolutional neural network (CNN), see my YouTube video for a quick overview https://www.youtube.com/watch?v=jUrRhjOwJZk . The approach of performing image processing away from the ESP32 is contradictory to a lot of projects, however I have tried many of them and found the ESP32 is not powerful enough to give satisfactory results and is harder to update.
+
+Using the ML5.js library which is referenced in the HTML and the video frame stream from the websockets I am achieving a high frame rate (although it helps I using a i7-10875H).
+
+To help with timing issues the COCO-SSD is only given the detection instruction when the image frame has been fully recieved via the WebSocket.
+
+```javascript
+    socket.onmessage = async function (msg) {
+      var bytes = new Uint8Array(msg.data);
+      var binary = '';
+      var len = bytes.byteLength;
+      for (var i = 0; i < len; i++) {
+        binary += String.fromCharCode(bytes[i])
+      }
+
+      var img = new Image();
+      img.src = 'data:image/jpg;base64,' + window.btoa(binary);
+
+      img.onload = function () {
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+        detector.detect(img, gotResults);
+      };
+    }
+```
+ML5.js is a great way to start using Machine Learning as entire pre-trained models can be loaded in a single line of code
+
+```javascript
+   detector = ml5.objectDetector('cocossd', modelReady);
+```
+
+The results are ok , considering this is running in browser using the small COCO-SSD model
+
+<table>
+<tr>
+    <td>![VR HTML page](images/arb.png)</td>
+</tr>
+<tr>
+    <td>![VR HTML page](images/2 bananas.png)</td>
+</tr>
+<tr>
+    <td>![VR HTML page](images/unicorn.png)</td>
+</tr>
+</table>
 
 # Latency testing
 
