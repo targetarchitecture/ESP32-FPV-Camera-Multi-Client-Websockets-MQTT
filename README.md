@@ -47,7 +47,9 @@ So I decided to buy a TTGO T-Journal as it has many useful features including bi
 
 If you google ESP32CAM you find lots of examples , feedback and articles are all based on people's desire to have high resolution and high frame rates. A quick review of specifications of the OV2640 cameras show that these combinations are not achievable. So a lower resolution of VGA is required to get 25 frames per second. I was initially concerned that VGA resolution was too small , however the COCO-SSD object detection model takes images of 300x300 pixels (https://www.tensorflow.org/lite/models/object_detection/overview#input) so the frame size becomes less of an issue.
 
-I needed to improve the FPS speed to at 25 frames per second, a common solution is to alter the camera’s clock speed from 20Mhz to 10Mhz, this is achieved by setting xclk_freq_hz = 10000000. This change allows two frame buffers to be used and this gives the camera hardware enough time to process at 25 FPS which is the same as the FPV camera. I experimented with different JPEG quality settings and found that 15 was the highest setting the ESP32-PICO could handle without crashing on an out of memory error. 
+I needed to improve the FPS speed to at 25 frames per second, a common solution is to alter the camera’s clock speed from 20Mhz to 10Mhz, this is achieved by setting xclk_freq_hz = 10000000. This change allows two frame buffers to be used and this gives the camera hardware enough time to process at 25 FPS which is the same as the FPV camera. I experimented with different JPEG quality settings and found that 15 was the highest setting the ESP32-PICO could handle without crashing on an out of memory error. I found this table showing the differant framerates and settings that are achievable.
+
+![Webcam framerates](images/FPS-table.png)
 
 The project is aiming to provide a camera solution which can FPV both to a mobile phone for use with Google Cardboard and as well as providing a mechanism to supply a stream of images to a machine learning platform. The TTGO T-Journal should allow the solution to be achievable.
 
