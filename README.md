@@ -128,6 +128,18 @@ A small regular expression is used to find and replace these variables, allowing
 ```
 The HTTP server has three pages it can serve
 
+<table>
+<tr>
+    <td>Key 1</td>
+    <td>Value 1</td>
+</tr>
+<tr>
+    <td>Key 2</td>
+    <td>Value 2</td>
+</tr>
+</table>
+
+
 ------------ | -------------
 http://{{IP}}/  |  Dual screen VR headset page
 http://{{IP}}/fullscreen | Full screen display, allowing F11 to show full screen
