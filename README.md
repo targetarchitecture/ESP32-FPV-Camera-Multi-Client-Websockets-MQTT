@@ -176,15 +176,12 @@ ML5.js is a great way to start using Machine Learning as entire pre-trained mode
    detector = ml5.objectDetector('cocossd', modelReady);
 ```
 
-The results are ok , considering this is running in browser using the small COCO-SSD model
+The results are ok, considering this is running in browser using the small COCO-SSD model
 
-<table>
-<tr>
-    <td><img src="images/arb.png"> ![VR HTML page](images/arb.png)</td>
-    <td>![VR HTML page](images/2 bananas.png)</td>
-    <td>![VR HTML page](images/unicorn.png)</td>
-</tr>
-</table>
+ ![VR HTML page](images/arb.png)
+![VR HTML page](images/2 bananas.png)
+![VR HTML page](images/unicorn.png)
+
 
 # Latency testing
 
