@@ -180,12 +180,8 @@ The results are ok , considering this is running in browser using the small COCO
 
 <table>
 <tr>
-    <td>![VR HTML page](images/arb.png)</td>
-</tr>
-<tr>
+    <td><img src="images/arb.png"> ![VR HTML page](images/arb.png)</td>
     <td>![VR HTML page](images/2 bananas.png)</td>
-</tr>
-<tr>
     <td>![VR HTML page](images/unicorn.png)</td>
 </tr>
 </table>
