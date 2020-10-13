@@ -178,9 +178,11 @@ ML5.js is a great way to start using Machine Learning as entire pre-trained mode
 
 The results are ok, considering this is running in browser using the small COCO-SSD model
 
- ![VR HTML page](images/arb.png)
-![VR HTML page](images/2 bananas.png)
-![VR HTML page](images/unicorn.png)
+![ARB Mug](images/ARB.png)
+
+![Two Bananas](images/bananas.png)
+
+![Ada's Unicorn](images/unicorn.png)
 
 
 # Latency testing
@@ -188,7 +190,6 @@ The results are ok, considering this is running in browser using the small COCO-
 Latency for the system is the lag between the camera seeing an image and it being visible in the VR headset. For the latency checks it is worth noting that the code is also transmitting the JPEG frame to a local MQTT broker running on RaspberryPi Zero W. The latency of the system was measured at around 175 milliseconds, for a drone this is too long, however for a robot travelling at one mile per hour it’s not important.
 
 ![Latency timings](images/latency.jpg)
-
 
 I ran the latency tests using the VR page on my desktop browser to show WebSocket streaming speed
 
