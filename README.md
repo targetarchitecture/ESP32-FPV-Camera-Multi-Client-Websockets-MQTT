@@ -13,7 +13,7 @@
 * HTML page for full-screen display
 * HTML page for object detection using ML5.js and the COCO-SSD model 
 
-![TTGO T-Journal](images/titlev2.jpg)
+![TTGO T-Journal](images/title.jpg)
 
 # Background
 
