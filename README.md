@@ -3,8 +3,8 @@
 * Uses ESP32-PICO TTGO T-Journal board 
 * Requires no PSRAM
 * Onboard OLED display of performance and statistics
-* Low latency of 28-35 milliseconds to complete the loop() method
-* Frame rates of 25 FPS 
+* Low latency of 15-35 milliseconds to complete the loop() method
+* Average frame rates of 25 FPS 
 * VGA dimension JPEG suitable for COCO-SSD model
 * Multi-client video feed using WebSockets
 * Publishing of JPEG frames to an MQTT broker
@@ -17,9 +17,9 @@
 
 # Background
 
-Since building a few drivable robots I have wanted to have a FPV solution to allow Ada to “see” what the robot is seeing. Ada regularly uses a mobile phone VR headset to watch the 360 degrees youtube channel and most recently the Daid Blane “Ascension” stunt (https://www.youtube.com/watch?v=R6WyUlvHKAE).
+Since building a few drivable robots I have wanted to have a FPV solution to allow Ada to “see” what the robot is seeing. Ada regularly uses a mobile phone VR headset to watch the 360 degrees YouTube channel and most recently the David Blane “Ascension” stunt (https://www.youtube.com/watch?v=R6WyUlvHKAE).
 
-I bought an ESP32Cam in mid 2019 and tried the pre-installed demo. I wasn’t impressed with the results , there was too much latency and it got very hot. So it went in the drawer with the other bits and pieces I’ve purchased on AliExpress and never used.
+I bought an ESP32Cam in mid-2019 and tried the pre-installed demo. I wasn’t impressed with the results , there was too much latency and it got very hot. So it went in the drawer with the other bits and pieces I’ve purchased on AliExpress and never used.
 
 Fast forward to October 2020, with time on my hands due to the pandemic curtailing a lot of social activities I started to think about the FPV problem again. 
 
@@ -55,23 +55,18 @@ With the frame rate problem solved I looked at how everyone else and the Arduino
 
 # Using Websockets to serve JPEG frames
 
-Technology has moved on since MJPEG and in 2011 the WebSocket protocol was ratified. WebSocket is much lighter than HTTP and is designed for fast small messages primarily for communication. I found some libraries on GitHbub for a WebSocket implementation and this looked a lot simpler as it could support multiple clients and run in the loop() method of the code. 
+Technology has moved on since MJPEG and in 2011 the WebSocket protocol was ratified. WebSocket is much lighter than HTTP and is designed for fast small messages primarily for communication. I found some libraries on GitHub for a WebSocket implementation and this looked a lot simpler as it could support multiple clients and run in the loop() method of the code. 
 
 ```cpp
-  for (int camNo = 0; camNo < webSockets; camNo++)
-  {
-    if (clientConnected[camNo] == true)
-    {
-      webSocket.sendBIN(camNo, fb->buf, fb_len);
-    }
-  }
+  //broadcast to all connected clients
+  webSocket.broadcastBIN(fb->buf, fb_len);
 ```
 
 Running all of the code in the loop() method allows the same image to be used across all connected devices and without any multi-core threading there is no need for a semaphore flag approach to understand when the camera is finished saving a frame.
 
 # Using MQTT to serve JPEG frames
 
-As the code isn’t serving up MJPEG most of the non-browser based AI platform don’t work with WebSockets, so I opted to use MQTT (https://en.wikipedia.org/wiki/MQTT) using a library I had used before (https://github.com/knolleary/pubsubclient). I tried the messaging on the Shiftr.io platform (https://shiftr.io/shiftr-io/demo) and simultaneously streaming to my phones browser and desktop browser and I have been impressed with the timings.
+To allow edge or cloud based AI image processing , I opted to use MQTT (https://en.wikipedia.org/wiki/MQTT) using a library I had used before (https://github.com/knolleary/pubsubclient). To quickly prototype the solution I used the Shiftr.io MQTT platform (https://shiftr.io/shiftr-io/demo) and simultaneously streaming to my phones browser and desktop browser and I have been impressed with the timings, considering is a cloud based platform.
 
 ![MQTT prototyping in Shiftr.io](images/shiftr.io.png)
 
@@ -96,8 +91,10 @@ The last piece of the code works remarkably simply when using the PlatformIO IDE
 Most examples I have seen use SPIFFs, however these take up more memory and structure on the ROM. I opted to embed the HTML file as a variable (https://docs.platformio.org/en/latest/platforms/espressif32.html#embedding-binary-data), PlatformIO makes this process so simple and the file is automatically updated each build and deploy.just by adding this command to the platformio.ini file.
 
 ```cpp 
-    board_build.embed_txtfiles =
+  board_build.embed_txtfiles =
     www/vr.html
+    www/cocossd.html
+    www/fullscreen.html
 ``` 
 
 When the file is requested at the board’s IP address ,ie: http://192.168.1.100/ the HTML is obtained from the .rodate section of flash. The code contains two templated variables that need to replaced, as the HTML doesn’t know the IP address in advance.
@@ -129,17 +126,32 @@ A small regular expression is used to find and replace these variables, allowing
     server.send(200, "text/html", resolved.c_str());
     }
 ```
+The HTTP server has three pages it can serve
+
+------------ | -------------
+http://{{IP}}/  |  Dual screen VR headset page
+http://{{IP}}/fullscreen | Full screen display, allowing F11 to show full screen
+http://{{IP}}/cocossd | Displays a single video area with COCO-SSD object detection
+
+# Latency testing
+
+Latency for the system is the lag between the camera seeing an image and it being visible in the VR headset. For the latency checks it is worth noting that the code is also transmitting the JPEG frame to a local MQTT broker running on RaspberryPi Zero W. The latency of the system was measured at around 175 milliseconds, for a drone this is too long, however for a robot travelling at one mile per hour it’s not important.
+
+![Latency timings](images/latency.jpg)
+
+
 I ran the latency tests using the VR page on my desktop browser to show WebSocket streaming speed
 
 ![Latency tests](images/latencyOLED.gif)
 
 
-Latency for the system is the lag between the camera seeing an image and it being visible in the VR headset. For the latency checks it is worth noting that the code is also transmitting the JPEG frame to a local MQTT broker running on RaspberryPi Zero W. The latency of the system was measured at around 175 milliseconds ,for a drone this is too long , however for a robot travelling at one mile per hour it’s not important.
-
-![Latency timings](images/latency.jpg)
-
-
 # Code improvements
+
+If you don't need to use the MQTT functionality this can be disabled be commenting out the
+
+```cpp
+  #define USE_MQTT
+```
 
 Further improvements to the code include disabling the onboard Bluetooth and disabling the brown out detector.
 
@@ -155,5 +167,4 @@ I’m sure the code could be optimised further ,especially as it uses the large 
 
 # Conclusion
 
-A great ESP32 based board which dispite it's small amount of RAM can be made to perform at a high frame rate. It's interesting to see the frame rates rise and fall as the complexity of the camera image changes the frame size. The use of multiple communication methods allows the FPV googles and edge-based AI to be blended togethor.
-I'm looking forward to using this solution as the basis for future computer vision projects. 
+A great ESP32 based board which despite it's small amount of RAM can be made to perform at a high frame rate. It's interesting to see the frame rates rise and fall as the complexity of the camera image changes the frame size. The use of multiple communication methods allows the FPV googles and edge-based AI to be blended together.I'm looking forward to using this solution as the basis for future computer vision projects. 
