@@ -19,9 +19,6 @@
 #define CAMERA_MODEL_TTGO_T_JOURNAL
 #include "camera_pins.h"
 
-// comment out if MQTT not required
-#define USE_MQTT
-
 // Set the OLED parameters
 #define SCREEN_WIDTH 128
 #define SCREEN_HEIGHT 32
@@ -34,6 +31,11 @@ MovingAverage<uint8_t, framesToAvg> loopAvg;
 MovingAverage<uint8_t, framesToAvg> mqttAvg;
 MovingAverage<uint8_t, framesToAvg> wsAvg;
 uint32_t timeToCompleteMQTTMs = 0;
+int8_t previousWebSocketClients = -1;
+ulong previousMQTTmillis = 0;
+uint8_t MQTTFPS = 0;
+uint8_t FPS = 0;
+ulong MQTTFPSmillis = millis();
 
 //define port numbers
 #define webSocketPort 81
@@ -47,9 +49,7 @@ WiFiClient client;
 Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, -1);
 
 //MQTT definitions
-#if defined(USE_MQTT)
 PubSubClient MQTTClient;
-#endif
 
 //embedded files
 extern const uint8_t vrHTML_start[] asm("_binary_www_vr_html_start");
@@ -91,9 +91,9 @@ void setup(void)
   }
 
   //WIFI start up
-  Serial.printf("Connecting to %s\n", ssid);
+  Serial.printf("Connecting to %s\n", WIFI_SSID);
   WiFi.mode(WIFI_STA);
-  WiFi.begin(ssid, password);
+  WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
 
   //connect
   while (WiFi.status() != WL_CONNECTED)
@@ -125,8 +125,6 @@ void setup(void)
   webSocket.begin();
   webSocket.onEvent(webSocketEvent);
 
-//only include if using MQTT
-#if defined(USE_MQTT)
   //set this to be a large enough value to allow an MQTT message containing a 22Kb JPEG to be sent
   MQTTClient.setBufferSize(30000);
 
@@ -139,7 +137,24 @@ void setup(void)
   {
     Serial.println("Connected to MQTT server");
   }
-#endif
+
+  MQTTClient.publish(MQTT_IP_TOPIC, WiFi.localIP().toString().c_str());
+
+  //send urls to MQTT
+  String url = WiFi.localIP().toString();
+  url.concat("/");
+
+  MQTTClient.publish(MQTT_URL_TOPIC, url.c_str());
+
+  url = WiFi.localIP().toString();
+  url.concat("/cocossd");
+
+  MQTTClient.publish(MQTT_COCOSSD_TOPIC, url.c_str());
+
+  url = WiFi.localIP().toString();
+  url.concat("/fullscreen");
+
+  MQTTClient.publish(MQTT_FULLSCREEN_TOPIC, url.c_str());
 
   //define web server endpoints and 404
   server.on("/", handleRoot);
@@ -147,8 +162,11 @@ void setup(void)
   server.on("/fullscreen", handleFullScreen);
   server.onNotFound(handle404);
 
+  //start the web server
   server.begin();
   Serial.println("HTTP server started");
+
+  MQTTClient.publish(MQTT_INFO_TOPIC, "HTTP server started");
 
   //some info
   Serial.printf("Total heap: %d \n", ESP.getHeapSize());
@@ -168,6 +186,8 @@ void loop(void)
 
   if (!fb)
   {
+    MQTTClient.publish(MQTT_ERROR_TOPIC, "Frame buffer could not be acquired");
+
     Serial.println("Frame buffer could not be acquired");
     delay(10000);
     ESP.restart();
@@ -175,35 +195,50 @@ void loop(void)
 
   uint32_t fb_len = fb->len;
 
-  // if (fb_len > max_fb_len)
-  // {
-  //   max_fb_len = fb_len;
-  //   Serial.print("Framebuffer Length : ");
-  //   Serial.println(max_fb_len);
-  // }
+  unsigned long currentMillis = millis();
 
-//only include if using MQTT
-#if defined(USE_MQTT)
-
-  int64_t MQTT_start = esp_timer_get_time();
-
-  if (MQTTClient.connected())
+  //200 = 5 FPS
+  if (currentMillis - previousMQTTmillis >= 200)
   {
-    MQTTClient.publish(MQTT_TOPIC, fb->buf, fb_len);
+    // save the last time an MQTT message was sent
+    previousMQTTmillis = currentMillis;
+
+    int64_t MQTT_start = esp_timer_get_time();
+
+    if (MQTTClient.connected())
+    {
+      MQTTClient.publish(MQTT_FRAMES_TOPIC, fb->buf, fb_len);
+    }
+    else
+    {
+      if (MQTTClient.connect(MQTT_CLIENTID, MQTT_USERNAME, MQTT_KEY))
+      {
+        Serial.println("Reconnected");
+      }
+    }
+
+    int64_t MQTT_end = esp_timer_get_time();
+
+    timeToCompleteMQTTMs = mqttAvg.add((MQTT_end - MQTT_start) / 1000);
+  }
+
+  currentMillis = millis();
+
+  if (currentMillis - MQTTFPSmillis >= 1000)
+  {
+    String sFPS = "";
+    sFPS.concat(MQTTFPS);
+    FPS = MQTTFPS;
+
+    MQTTClient.publish(MQTT_FPS_TOPIC, sFPS.c_str());
+
+    MQTTFPSmillis = currentMillis;
+    MQTTFPS = 0;
   }
   else
   {
-    if (MQTTClient.connect(MQTT_CLIENTID, MQTT_USERNAME, MQTT_KEY))
-    {
-      Serial.println("Reconnected");
-    }
+    MQTTFPS = MQTTFPS + 1;
   }
-
-  int64_t MQTT_end = esp_timer_get_time();
-
-  timeToCompleteMQTTMs = mqttAvg.add((MQTT_end - MQTT_start) / 1000);
-
-#endif
 
   int64_t ws_start = esp_timer_get_time();
 
@@ -213,16 +248,30 @@ void loop(void)
   int64_t ws_end = esp_timer_get_time();
   uint8_t timeToCompleteWSMs = wsAvg.add((ws_end - ws_start) / 1000);
 
-  //Not sure this is needed as broadcastBIN has a yield function call
-  //delay(10);
-
   //return the frame buffer back to be reused
   esp_camera_fb_return(fb);
 
+  //put some delay in here, give the poor ESP a rest (not simple as the loop takes differant times to complete based on the image size being sent to the MQTT server and WS clients)
+  if (webSocket.connectedClients() == 0)
+  {
+    delay(100);
+  }
+  else if (webSocket.connectedClients() == 1)
+  {
+    delay(20);
+  }
+  else if (webSocket.connectedClients() == 2)
+  {
+    delay(10);
+  }
+  else
+  {
+    delay(5);
+  }
+
+  //do loop calculations and display
   int64_t loop_end = esp_timer_get_time();
   uint8_t timeToCompleteLoopMs = loopAvg.add((loop_end - loop_start) / 1000);
-
-  uint8_t fps = (int)1000 / timeToCompleteLoopMs;
 
   display.clearDisplay();
   display.setTextSize(1);
@@ -231,8 +280,18 @@ void loop(void)
   display.printf("JPEG: %u Kb\n", (uint32_t)(fb_len) / 1024);
   display.printf("MQTT: %u ms WS: %u ms\n", timeToCompleteMQTTMs, timeToCompleteWSMs);
   display.printf("LOOP TIME: %u ms\n", timeToCompleteLoopMs);
-  display.printf("CLIENTS: %u  FPS: %u\n", webSocket.connectedClients(), fps);
+  display.printf("CLIENTS: %u  FPS: %u\n", webSocket.connectedClients(), FPS);
   display.display();
+
+  if (previousWebSocketClients != webSocket.connectedClients())
+  {
+    String msg = "";
+    msg.concat(webSocket.connectedClients());
+
+    MQTTClient.publish(MQTT_WS_TOPIC, msg.c_str());
+
+    previousWebSocketClients = webSocket.connectedClients();
+  }
 }
 
 int initCamera()
