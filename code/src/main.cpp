@@ -138,18 +138,18 @@ void setup(void)
     Serial.println("Connected to MQTT server");
   }
 
-  MQTTClient.publish(MQTT_IP_TOPIC, WiFi.localIP().toString().c_str());
+  MQTTClient.publish(MQTT_IP_TOPIC, WiFi.localIP().toString().c_str(),true);
 
   //send urls to MQTT
   String url = WiFi.localIP().toString();
   url.concat("/");
 
-  MQTTClient.publish(MQTT_URL_TOPIC, url.c_str());
+  MQTTClient.publish(MQTT_URL_TOPIC, url.c_str(),true);
 
   url = WiFi.localIP().toString();
   url.concat("/cocossd");
 
-  MQTTClient.publish(MQTT_COCOSSD_TOPIC, url.c_str());
+  MQTTClient.publish(MQTT_COCOSSD_TOPIC, url.c_str(),true);
 
   url = WiFi.localIP().toString();
   url.concat("/fullscreen");
@@ -186,7 +186,7 @@ void loop(void)
 
   if (!fb)
   {
-    MQTTClient.publish(MQTT_ERROR_TOPIC, "Frame buffer could not be acquired");
+    MQTTClient.publish(MQTT_ERROR_TOPIC, "Frame buffer could not be acquired",true);
 
     Serial.println("Frame buffer could not be acquired");
     delay(10000);
